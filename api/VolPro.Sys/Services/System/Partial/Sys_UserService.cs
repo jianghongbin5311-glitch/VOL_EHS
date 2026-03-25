@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
@@ -43,18 +43,19 @@ namespace VolPro.Sys.Services
         {
             WebResponseContent responseContent = new WebResponseContent();
             string msg = string.Empty;
-            //   2020.06.12增加验证码
+            //   2020.06.12增加验证码 (已禁用)
+            // IMemoryCache memoryCache = _context.GetService<IMemoryCache>();
+            // string cacheCode = (memoryCache.Get(loginInfo.UUID) ?? "").ToString();
+            // if (string.IsNullOrEmpty(cacheCode))
+            // {
+            //     return responseContent.Error("验证码已失效".Translator());
+            // }
+            // if (cacheCode.ToLower() != loginInfo.VerificationCode.ToLower())
+            // {
+            //     memoryCache.Remove(loginInfo.UUID);
+            //     return responseContent.Error("验证码不正确".Translator());
+            // }
             IMemoryCache memoryCache = _context.GetService<IMemoryCache>();
-            string cacheCode = (memoryCache.Get(loginInfo.UUID) ?? "").ToString();
-            if (string.IsNullOrEmpty(cacheCode))
-            {
-                return responseContent.Error("验证码已失效".Translator());
-            }
-            if (cacheCode.ToLower() != loginInfo.VerificationCode.ToLower())
-            {
-                memoryCache.Remove(loginInfo.UUID);
-                return responseContent.Error("验证码不正确".Translator());
-            }
             try
             {
                 Sys_User user = await _repository.FindAsIQueryable(x => x.UserName == loginInfo.UserName)

@@ -32,19 +32,7 @@
             :placeholder="$ts(['请输入', '密码'])"
           />
         </div>
-        <div class="item">
-          <div class="input-icon el-icon-mobile"></div>
 
-          <input
-            v-focus
-            type="text"
-            v-model="userInfo.verificationCode"
-            :placeholder="$ts(['请输入', '验证码'])"
-          />
-          <div class="code" @click="getVierificationCode">
-            <img v-show="codeImgSrc != ''" :src="codeImgSrc" />
-          </div>
-        </div>
       </div>
       <div class="loging-btn">
         <el-button
@@ -129,9 +117,10 @@ export default defineComponent({
     const login = () => {
       if (!userInfo.userName) return $message.error($ts(["请输入", "账号"]));
       if (!userInfo.password) return $message.error($ts(["请输入", "密码"]));
-      if (!userInfo.verificationCode) {
-        return $message.error($ts(["请输入", "验证码"]));
-      }
+      // 验证码已禁用
+      // if (!userInfo.verificationCode) {
+      //   return $message.error($ts(["请输入", "验证码"]));
+      // }
       loading.value = true;
       http.post("/api/user/login", userInfo, $ts("正在登录") + "....").then((result) => {
         if (!result.status) {

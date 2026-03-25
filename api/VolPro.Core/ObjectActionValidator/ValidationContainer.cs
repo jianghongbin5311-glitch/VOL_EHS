@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
@@ -24,8 +24,8 @@ namespace VolPro.Core.ObjectActionValidator
         /// <returns></returns>
         public static IServiceCollection UseMethodsModelParameters(this IServiceCollection services)
         {
-            //登陆方法校验参数,只验证密码与用户名
-            ValidatorModel.Login.Add<LoginInfo>(x => new { x.Password, x.UserName,x.VerificationCode,x.UUID });
+            //登陆方法校验参数,只验证密码与用户名 (验证码已禁用)
+            ValidatorModel.Login.Add<LoginInfo>(x => new { x.Password, x.UserName });
 
             //只验证LoginInfo的密码字段必填
             ValidatorModel.LoginOnlyPassWord.Add<LoginInfo>(x => new { x.Password });

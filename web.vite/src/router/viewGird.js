@@ -524,6 +524,19 @@ let viewgird = [
         path: '/EHS_HazardAnalysis',
         name: 'EHS_HazardAnalysis',
         component: () => import('@/views/ehs/EHS_HazardReport.vue')
+    }    ,{
+        path: '/EHS_NewsReport',
+        name: 'EHS_NewsReport',
+        component: () => import('@/views/ehs/EHS_NewsReport.vue')
+    }    ,{
+        path: '/EHS_GroupIncident',
+        name: 'EHS_GroupIncident',
+        component: () => import('@/views/ehs/EHS_GroupIncident.vue')
+    }    ,{
+        path: '/EHS_KnowledgeChat',
+        name: 'EHS_KnowledgeChat',
+        component: () => import('@/views/ehs/EHS_KnowledgeChat.vue'),
+        meta: { keepAlive: false }
     }]
 
   //上面的demo、MES开头的都是示例菜单，可以任意删除 

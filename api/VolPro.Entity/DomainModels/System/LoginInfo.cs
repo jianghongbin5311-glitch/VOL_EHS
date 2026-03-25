@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using System.ComponentModel.DataAnnotations;
 
 namespace VolPro.Entity.DomainModels
@@ -17,9 +17,9 @@ namespace VolPro.Entity.DomainModels
         public string Password { get; set; }
         [MaxLength(6)]
         [Display(Name = "验证码")]
-        [Required(ErrorMessage = "验证码不能为空")]
+        // [Required(ErrorMessage = "验证码不能为空")] // 已禁用验证码
         public string VerificationCode { get; set; }
-        [Required(ErrorMessage = "参数不完整")]
+        // [Required(ErrorMessage = "参数不完整")] // 已禁用验证码
         /// <summary>
         /// 2020.06.12增加验证码
         /// </summary>
