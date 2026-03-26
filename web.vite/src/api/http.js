@@ -18,10 +18,10 @@ if (process.env.NODE_ENV == 'development') {
 } else if (process.env.NODE_ENV == 'debug') {
   axios.defaults.baseURL = 'http://localhost:9100/'
 } else if (process.env.NODE_ENV == 'production') {
-  //后台接口地址
-  axios.defaults.baseURL = 'https://proapi.volcore.xyz/'
-  //大屏发布的地址
-  dataViewUrl = 'http://data.volcore.xyz/'
+  //后台接口地址 - 动态获取当前服务器地址，部署到任何服务器都自动适配
+  axios.defaults.baseURL = window.location.origin + '/'
+  //大屏发布的地址 - 与主站同域
+  dataViewUrl = window.location.origin + '/'
 }
   //后台接口地址
  //axios.defaults.baseURL = 'https://proapi.volcore.xyz/'

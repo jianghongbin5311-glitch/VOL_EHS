@@ -188,6 +188,14 @@ const routes = [
       anonymous:true
     }
   },
+  {
+    path: '/mobile/ehs-report',
+    name: 'ehsMobileReport',
+    component: () => import('@/views/ehs/EhsMobileReport.vue'),
+    meta: {
+      keepAlive: false
+    }
+  },
 ]
 
 const router = createRouter({

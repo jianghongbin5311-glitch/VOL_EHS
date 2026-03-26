@@ -4,12 +4,15 @@
                :searchFormFields="searchFormFields" :searchFormOptions="searchFormOptions"
                :table="table" :extend="extend" :onInit="onInit" :onInited="onInited"
                :searchBefore="searchBefore" :addBefore="addBefore" :updateBefore="updateBefore">
-        <template #gridHeader></template>
+        <template #gridHeader>
+            <EhsMobileQrCode />
+        </template>
     </view-grid>
 </template>
 <script setup lang="jsx">
     import extend from "@/extension/ehs/EHS_GroupIncident.jsx";
     import viewOptions from './EHS_GroupIncident/options.js'
+    import EhsMobileQrCode from '@/components/ehs/EhsMobileQrCode.vue'
     import { ref, reactive, getCurrentInstance } from "vue";
     const grid = ref(null);
     const { proxy } = getCurrentInstance()
