@@ -19,7 +19,7 @@ if (process.env.NODE_ENV == 'development') {
   axios.defaults.baseURL = 'http://localhost:9100/'
 } else if (process.env.NODE_ENV == 'production') {
   //后台接口地址
-  axios.defaults.baseURL = 'https://proapi.volcore.xyz/'
+  axios.defaults.baseURL = 'https://cntest.nexteer.com:9103/'
   //大屏发布的地址
   dataViewUrl = 'http://data.volcore.xyz/'
 }
