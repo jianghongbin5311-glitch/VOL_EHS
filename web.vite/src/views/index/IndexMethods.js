@@ -2,6 +2,7 @@ import MessageConfig from './MessageConfig.js'
 export default function (proxy, dataConfig, router,onSelect) {
   const store = proxy.$store
   const userInfo = dataConfig.userInfo
+  const navKey = 'nav:id'
   let _userInfo = store.getters.getUserInfo()
   if (_userInfo) {
     userInfo.name = _userInfo.userName
@@ -78,6 +79,11 @@ export default function (proxy, dataConfig, router,onSelect) {
 
     menuOptions.value = data
 
+    const routeMenu = getRouteMenuItem(data, router.currentRoute.value)
+    if (routeMenu) {
+      syncNavMenu(routeMenu.id, dataConfig, data, navKey)
+    }
+
     dataConfig.permissionInited.value = true
 
     //开启消息推送（main.js中设置是否开启signalR)
@@ -91,14 +97,7 @@ export default function (proxy, dataConfig, router,onSelect) {
     //当前刷新是不是首页
     if (router.currentRoute.value.path != dataConfig.navigation[0].path) {
       //查找系统菜单
-      let item = menuOptions.value.find((x) => {
-        return x.url && x.url == router.currentRoute.value.fullPath
-      })
-      if (!item) {
-        item = menuOptions.value.find((x) => {
-          return x.path == router.currentRoute.value.path
-        })
-      }
+      let item = getRouteMenuItem(menuOptions.value, router.currentRoute.value)
       if (item) return onSelect(item.id)
       //查找顶部快捷连接
       item = dataConfig.links.value.find((x) => {
@@ -172,4 +171,43 @@ const initQueryParams = (data) => {
     //   d.icon = 'el-icon-menu'
     // }
   }
+}
+
+const getRouteMenuItem = (data, route) => {
+  let item = data.find((x) => {
+    return x.url && x.url == route.fullPath
+  })
+  if (item) {
+    return item
+  }
+  return data.find((x) => {
+    return x.path == route.path
+  })
+}
+
+const getRootMenuId = (menuId, data) => {
+  let current = data.find((x) => x.id == menuId)
+  while (current && current.parentId) {
+    current = data.find((x) => x.id == current.parentId)
+  }
+  return current?.id
+}
+
+const syncNavMenu = (menuId, dataConfig, data, navKey) => {
+  const { navMenuList, navCurrentMenuId, menuData } = dataConfig
+  if (!navMenuList.length) {
+    return
+  }
+  const rootMenuId = getRootMenuId(menuId, data)
+  if (!rootMenuId) {
+    return
+  }
+  const navIndex = navMenuList.findIndex((x) => x.id == rootMenuId)
+  if (navIndex === -1) {
+    return
+  }
+  navCurrentMenuId.value = rootMenuId
+  localStorage.setItem(navKey, rootMenuId)
+  menuData.splice(0)
+  menuData.push(...navMenuList[navIndex].children)
 }

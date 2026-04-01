@@ -532,10 +532,80 @@ let viewgird = [
         path: '/EHS_GroupIncident',
         name: 'EHS_GroupIncident',
         component: () => import('@/views/ehs/EHS_GroupIncident.vue')
-    }    ,{
+  }    ,{
         path: '/EHS_KnowledgeChat',
         name: 'EHS_KnowledgeChat',
         component: () => import('@/views/ehs/EHS_KnowledgeChat.vue'),
+        meta: { keepAlive: false }
+  }    ,{
+        path: '/LL_Dashboard',
+        name: 'LL_Dashboard',
+        component: () => import('@/views/lesson/LL_Dashboard.vue'),
+        meta: { keepAlive: false }
+  }    ,{
+        path: '/LL_LessonLearn',
+        name: 'LL_LessonLearn',
+        component: () => import('@/views/lesson/LL_LessonLearn.vue'),
+        meta: { keepAlive: false }
+    }    ,{
+        path: '/LL_CaseDetail',
+        name: 'LL_CaseDetail',
+        component: () => import('@/views/lesson/LL_CaseDetail.vue'),
+        meta: { keepAlive: false }
+  }    ,{
+        path: '/LL_MasterDataPlant',
+        name: 'LL_MasterDataPlant',
+        component: () => import('@/views/lesson/LL_MasterData.vue'),
+        meta: { keepAlive: false, dynamic: true }
+    }    ,{
+        path: '/LL_MasterDataWorkshop',
+        name: 'LL_MasterDataWorkshop',
+        component: () => import('@/views/lesson/LL_MasterData.vue'),
+        meta: { keepAlive: false, dynamic: true }
+    }    ,{
+        path: '/LL_MasterDataLine',
+        name: 'LL_MasterDataLine',
+        component: () => import('@/views/lesson/LL_MasterData.vue'),
+        meta: { keepAlive: false, dynamic: true }
+    }    ,{
+        path: '/LL_MasterDataProductLine',
+        name: 'LL_MasterDataProductLine',
+        component: () => import('@/views/lesson/LL_MasterData.vue'),
+        meta: { keepAlive: false, dynamic: true }
+    }    ,{
+        path: '/LL_MasterDataTag',
+        name: 'LL_MasterDataTag',
+        component: () => import('@/views/lesson/LL_MasterData.vue'),
+        meta: { keepAlive: false, dynamic: true }
+    }    ,{
+        path: '/LL_MasterDataDocumentType',
+        name: 'LL_MasterDataDocumentType',
+        component: () => import('@/views/lesson/LL_MasterData.vue'),
+        meta: { keepAlive: false, dynamic: true }
+    }    ,{
+        path: '/LL_ReviewCenter',
+        name: 'LL_ReviewCenter',
+        component: () => import('@/views/lesson/LL_ReviewCenter.vue'),
+        meta: { keepAlive: false }
+    }    ,{
+        path: '/LL_TaskCenter',
+        name: 'LL_TaskCenter',
+        component: () => import('@/views/lesson/LL_TaskCenter.vue'),
+        meta: { keepAlive: false }
+    }    ,{
+        path: '/LL_DocumentCenter',
+        name: 'LL_DocumentCenter',
+        component: () => import('@/views/lesson/LL_DocumentCenter.vue'),
+        meta: { keepAlive: false }
+    }    ,{
+        path: '/LL_VersionCenter',
+        name: 'LL_VersionCenter',
+        component: () => import('@/views/lesson/LL_VersionCenter.vue'),
+        meta: { keepAlive: false }
+    }    ,{
+        path: '/LL_Analytics',
+        name: 'LL_Analytics',
+        component: () => import('@/views/lesson/LL_Analytics.vue'),
         meta: { keepAlive: false }
     }]
 

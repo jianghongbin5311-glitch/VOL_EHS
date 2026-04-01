@@ -1,505 +1,488 @@
 <template>
-  <div class="ehs-dashboard">
+  <div class="ll-home">
     <el-scrollbar style="height: 100%">
-      <!-- 欢迎横幅 -->
-      <div class="welcome-banner">
-        <div class="banner-content">
-          <div class="banner-left">
-            <h1>EHS 管理驾驶舱</h1>
-            <p>Environment, Health & Safety Management Dashboard</p>
-            <div class="banner-date">{{ currentDate }}</div>
-          </div>
-          <div class="banner-right">
-            <div class="safety-days">
-              <div class="days-number">{{ safetyDays }}</div>
-              <div class="days-label">连续安全天数</div>
-            </div>
+      <section class="hero">
+        <div class="hero-copy">
+          <div class="eyebrow">Lesson Learn Workspace</div>
+          <h1>经验教训中心</h1>
+          <p>面向 Lesson Learn 的独立知识沉淀平台，聚焦问题、根因、措施和复用。</p>
+          <div class="hero-actions">
+            <el-button type="primary" size="large" @click="goToPage('/LL_LessonLearn')">进入 Search Case</el-button>
+            <el-button size="large" @click="goToPage('/LL_CaseDetail')">新建 Case Detail</el-button>
           </div>
         </div>
-      </div>
-
-      <!-- KPI 卡片区 -->
-      <div class="kpi-section">
-        <div class="kpi-card" v-for="(kpi, idx) in kpiCards" :key="idx"
-             :style="{ borderTopColor: kpi.color }">
-          <div class="kpi-icon" :style="{ background: kpi.bgColor }">
-            <el-icon :size="28" :color="kpi.color"><component :is="kpi.icon" /></el-icon>
+        <div class="hero-side">
+          <div class="hero-stat">
+            <div class="stat-label">总记录数</div>
+            <div class="stat-value">{{ totals.all }}</div>
           </div>
-          <div class="kpi-info">
-            <div class="kpi-value" :style="{ color: kpi.color }">{{ kpi.value }}</div>
-            <div class="kpi-label">{{ kpi.label }}</div>
-          </div>
-          <div class="kpi-trend" v-if="kpi.trend">
-            <span :class="kpi.trendUp ? 'trend-up' : 'trend-down'">
-              {{ kpi.trendUp ? '↑' : '↓' }} {{ kpi.trend }}
-            </span>
-            <span class="trend-label">vs 上月</span>
+          <div class="hero-meta">
+            <div>主库: vol_pro_ll_main</div>
+            <div>业务库: vol_pro_ll_service</div>
+            <div>当前日期: {{ currentDate }}</div>
           </div>
         </div>
-      </div>
+      </section>
 
-      <!-- 中间内容区 -->
-      <div class="content-row">
-        <!-- 最新法规新闻 -->
-        <div class="content-card news-card">
-          <div class="card-header">
-            <h3>📰 最新法规与新闻</h3>
-            <el-button type="primary" link @click="goToPage('/EHS_NewsReport')">查看全部 →</el-button>
-          </div>
-          <div class="news-list">
-            <div class="news-item" v-for="(news, idx) in latestNews" :key="idx" @click="goToPage('/EHS_NewsReport')">
-              <el-tag :type="getCategoryType(news.category)" size="small" effect="dark">{{ news.category }}</el-tag>
-              <span class="news-title">{{ news.title }}</span>
-              <span class="news-date">{{ news.date }}</span>
-            </div>
-            <div v-if="latestNews.length === 0" class="empty-hint">
-              暂无数据，请先执行种子数据SQL或等待AI自动生成
-            </div>
-          </div>
+      <section class="cards">
+        <div class="metric-card blue">
+          <div class="metric-name">草稿</div>
+          <div class="metric-value">{{ totals.draft }}</div>
+          <div class="metric-desc">编辑中的 Lesson Learn</div>
         </div>
+        <div class="metric-card amber">
+          <div class="metric-name">审批中</div>
+          <div class="metric-value">{{ totals.review }}</div>
+          <div class="metric-desc">等待审批处理</div>
+        </div>
+        <div class="metric-card green">
+          <div class="metric-name">已发布</div>
+          <div class="metric-value">{{ totals.published }}</div>
+          <div class="metric-desc">可供复用的知识资产</div>
+        </div>
+        <div class="metric-card slate">
+          <div class="metric-name">最新列表页</div>
+          <div class="metric-value">LL</div>
+          <div class="metric-desc">菜单入口已切换为 Lesson Learn</div>
+        </div>
+      </section>
 
-        <!-- 内部事件概览 -->
-        <div class="content-card incident-card">
-          <div class="card-header">
-            <h3>🏭 内部事件概览</h3>
-            <el-button type="primary" link @click="goToPage('/EHS_GroupIncident')">查看全部 →</el-button>
+      <section class="content-grid">
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">最近 Lesson Learn</div>
+            <el-button link type="primary" @click="goToPage('/LL_LessonLearn')">查看全部</el-button>
           </div>
-          <div class="incident-list">
-            <div class="incident-item" v-for="(inc, idx) in latestIncidents" :key="idx" @click="goToPage('/EHS_GroupIncident')">
-              <div class="inc-header">
-                <el-tag :type="getIncidentLevelType(inc.level)" size="small">{{ inc.level }}</el-tag>
-                <span class="inc-company">{{ inc.company }}</span>
+          <div v-if="loading" class="empty-state">加载中...</div>
+          <div v-else-if="recentLessons.length === 0" class="empty-state">暂无数据，请先执行 Lesson Learn 初始化 SQL。</div>
+          <div v-else class="lesson-list">
+            <div class="lesson-row" v-for="item in recentLessons" :key="item.lessonLearn_Id || item.lessonNo" @click="goToPage('/LL_LessonLearn')">
+              <div class="lesson-main">
+                <div class="lesson-title">{{ item.titleEn || item.titleCn || item.lessonNo || '-' }}</div>
+                <div class="lesson-sub">{{ item.lessonNo || '-' }} · {{ item.category || '未分类' }}</div>
               </div>
-              <div class="inc-title">{{ inc.title }}</div>
-              <div class="inc-meta">
-                <span>📍 {{ inc.location }}</span>
-                <span>📅 {{ inc.date }}</span>
+              <div class="lesson-side">
+                <el-tag :type="statusType(item.status)">{{ statusText(item.status) }}</el-tag>
               </div>
             </div>
-            <div v-if="latestIncidents.length === 0" class="empty-hint">
-              暂无数据，请先执行种子数据SQL
+          </div>
+        </div>
+
+        <div class="panel accent">
+          <div class="panel-header">
+            <div class="panel-title">当前阶段建议</div>
+          </div>
+          <div class="guide-list">
+            <div class="guide-item">
+              <div class="guide-name">1. 先验证菜单链路</div>
+              <div class="guide-desc">通过左侧 Lesson Learn 菜单进入，而不是只靠地址栏直达。</div>
+            </div>
+            <div class="guide-item">
+              <div class="guide-name">2. 再验证业务数据</div>
+              <div class="guide-desc">确认 `vol_pro_ll_service.dbo.LL_LessonLearn` 已有初始化数据或迁移数据。</div>
+            </div>
+            <div class="guide-item">
+              <div class="guide-name">3. 清理旧样板菜单</div>
+              <div class="guide-desc">禁用 EHS、MES、Demo 等样板菜单，避免独立实例继续混杂。</div>
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      <!-- 快捷导航区 -->
-      <div class="quick-nav-section">
-        <h3 class="section-title">🚀 快捷导航</h3>
-        <div class="nav-grid">
-          <div class="nav-item" v-for="(nav, idx) in quickNavs" :key="idx" @click="goToPage(nav.path)"
-               :style="{ background: nav.gradient }">
-            <div class="nav-icon">{{ nav.icon }}</div>
-            <div class="nav-name">{{ nav.name }}</div>
-            <div class="nav-desc">{{ nav.desc }}</div>
+      <section class="quick-links">
+        <div class="section-title">平台导航</div>
+        <div class="link-grid">
+          <div class="link-card" v-for="item in quickLinks" :key="item.path" @click="goToPage(item.path)">
+            <div class="link-icon">{{ item.icon }}</div>
+            <div class="link-name">{{ item.name }}</div>
+            <div class="link-desc">{{ item.desc }}</div>
           </div>
         </div>
-      </div>
-
-      <!-- 底部信息 -->
-      <div class="footer-info">
-        <p>Nexteer EHS Management System v2.0 · Powered by VOL Pro & AI</p>
-        <p>Environment, Health and Safety — 安全第一 · 预防为主 · 综合治理</p>
-      </div>
+      </section>
     </el-scrollbar>
   </div>
 </template>
 
-<script>
-import { ref, reactive, onMounted, computed } from 'vue'
+<script setup>
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  Warning, Document, Notification, DataLine,
-  OfficeBuilding, Tickets, Trophy, Timer
-} from '@element-plus/icons-vue'
 import http from '@/api/http.js'
 
-export default {
-  name: 'Home',
-  components: { Warning, Document, Notification, DataLine, OfficeBuilding, Tickets, Trophy, Timer },
-  setup() {
-    const router = useRouter()
-    const safetyDays = ref(127)
-    const latestNews = ref([])
-    const latestIncidents = ref([])
+const router = useRouter()
+const loading = ref(false)
+const recentLessons = ref([])
+const totals = reactive({
+  all: 0,
+  draft: 0,
+  review: 0,
+  published: 0
+})
+const quickLinks = [
+  { name: 'Dashboard', path: '/LL_Dashboard', icon: '01', desc: '首页工作台与知识分布' },
+  { name: 'Search Case', path: '/LL_LessonLearn', icon: '02', desc: '快速检索、筛选和打开案例' },
+  { name: 'Case Detail', path: '/LL_CaseDetail', icon: '03', desc: '一页式录入标题、根因、附件和评审' },
+  { name: 'Review Center', path: '/LL_ReviewCenter', icon: '04', desc: '多轮评审链和审批结果' },
+  { name: 'Task Center', path: '/LL_TaskCenter', icon: '05', desc: '文件更新任务和闭环进度' },
+  { name: 'Document Center', path: '/LL_DocumentCenter', icon: '06', desc: '标准文件、附件和下载统计' },
+  { name: 'Analytics', path: '/LL_Analytics', icon: '07', desc: '标签、产品线和状态统计' },
+  { name: 'Base Data', path: '/LL_MasterDataPlant', icon: '08', desc: '工厂、车间、线体与标签主数据维护' }
+]
 
-    const currentDate = computed(() => {
-      const now = new Date()
-      const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }
-      return now.toLocaleDateString('zh-CN', options)
-    })
+const currentDate = computed(() => {
+  const now = new Date()
+  return now.toLocaleDateString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  })
+})
 
-    const kpiCards = reactive([
-      { label: '本月安全隐患', value: '12', icon: 'Warning', color: '#e6a23c',
-        bgColor: '#fdf6ec', trend: '3', trendUp: false },
-      { label: '本月完成整改', value: '9', icon: 'Tickets', color: '#67c23a',
-        bgColor: '#f0f9eb', trend: '15%', trendUp: true },
-      { label: '外部法规动态', value: '6', icon: 'Document', color: '#409eff',
-        bgColor: '#ecf5ff', trend: '2', trendUp: true },
-      { label: '集团事件通报', value: '5', icon: 'Notification', color: '#f56c6c',
-        bgColor: '#fef0f0', trend: '1', trendUp: false },
-      { label: '本月培训完成率', value: '92%', icon: 'Trophy', color: '#9b59b6',
-        bgColor: '#f5eef8', trend: '8%', trendUp: true },
-      { label: '环保达标率', value: '100%', icon: 'DataLine', color: '#00b894',
-        bgColor: '#e8faf3', trend: '-', trendUp: true },
+const searchPayload = (status) => ({
+  page: 1,
+  pageSize: status === undefined ? 6 : 1,
+  keyword: '',
+  tag: '',
+  category: '',
+  status,
+  productLine: ''
+})
+
+const statusText = (status) => {
+  if (status === 1) return '审批中'
+  if (status === 2) return '已驳回'
+  if (status === 3) return '已发布'
+  return '编辑中'
+}
+
+const statusType = (status) => {
+  if (status === 1) return 'warning'
+  if (status === 2) return 'danger'
+  if (status === 3) return 'success'
+  return 'info'
+}
+
+const loadLessons = async () => {
+  loading.value = true
+  try {
+    const [allRes, draftRes, reviewRes, publishedRes] = await Promise.all([
+      http.post('/api/LL_LessonLearn/Search', searchPayload(undefined), false),
+      http.post('/api/LL_LessonLearn/Search', searchPayload(0), false),
+      http.post('/api/LL_LessonLearn/Search', searchPayload(1), false),
+      http.post('/api/LL_LessonLearn/Search', searchPayload(3), false)
     ])
 
-    const quickNavs = reactive([
-      { name: '外部法规新闻', desc: 'AI自动生成的法规新闻报告', path: '/EHS_NewsReport',
-        icon: '📰', gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' },
-      { name: '内部事件管理', desc: '集团事件跟踪与教训分享', path: '/EHS_GroupIncident',
-        icon: '🏭', gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' },
-      { name: '安全检查台账', desc: '日常安全检查与隐患排查', path: '/EHS_SafetyLedger',
-        icon: '📋', gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' },
-      { name: '事故管理', desc: '事故记录与调查报告', path: '/EHS_Accident',
-        icon: '⚠️', gradient: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)' },
-      { name: '培训管理', desc: '安全培训计划与记录', path: '/EHS_Training',
-        icon: '🎓', gradient: 'linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)' },
-      { name: '应急预案', desc: '应急预案与演练管理', path: '/EHS_EmergencyPlan',
-        icon: '🚨', gradient: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)' },
-    ])
-
-    const getCategoryType = (cat) => {
-      const map = { '事故': 'danger', '处罚': 'warning', '法规': '', '检查': 'success', '预警': 'danger', '综合': 'info' }
-      return map[cat] || 'info'
+    if (allRes?.status) {
+      recentLessons.value = allRes.data?.items || []
+      totals.all = allRes.data?.total || 0
     }
-
-    const getIncidentLevelType = (level) => {
-      const map = { '重大': 'danger', '较大': 'warning', '一般': 'info' }
-      return map[level] || 'info'
-    }
-
-    const goToPage = (path) => {
-      router.push(path)
-    }
-
-    const loadDashboardData = () => {
-      // 加载最新法规新闻
-      http.post('/api/EHS_NewsReport/GetPageData', {
-        page: 1, rows: 5, sort: 'ReportDate', order: 'desc', wheres: '[]'
-      }, true).then(res => {
-        if (res.rows) {
-          latestNews.value = res.rows.map(r => ({
-            title: r.Title,
-            category: r.Category || '综合',
-            date: r.ReportDate ? r.ReportDate.substring(0, 10) : ''
-          }))
-          // 更新KPI
-          kpiCards[2].value = String(res.total || 0)
-        }
-      }).catch(() => {})
-
-      // 加载最新内部事件
-      http.post('/api/EHS_GroupIncident/GetPageData', {
-        page: 1, rows: 4, sort: 'OccurDate', order: 'desc', wheres: '[]'
-      }, true).then(res => {
-        if (res.rows) {
-          latestIncidents.value = res.rows.map(r => ({
-            title: r.Title,
-            company: r.CompanyName,
-            level: r.IncidentLevel || '一般',
-            location: r.OccurLocation || '-',
-            date: r.OccurDate ? r.OccurDate.substring(0, 10) : ''
-          }))
-          kpiCards[3].value = String(res.total || 0)
-        }
-      }).catch(() => {})
-    }
-
-    onMounted(() => {
-      loadDashboardData()
-    })
-
-    return {
-      currentDate, safetyDays, kpiCards, quickNavs,
-      latestNews, latestIncidents,
-      getCategoryType, getIncidentLevelType, goToPage
-    }
+    totals.draft = draftRes?.status ? draftRes.data?.total || 0 : 0
+    totals.review = reviewRes?.status ? reviewRes.data?.total || 0 : 0
+    totals.published = publishedRes?.status ? publishedRes.data?.total || 0 : 0
+  } finally {
+    loading.value = false
   }
 }
+
+const goToPage = (path) => {
+  router.push(path)
+}
+
+onMounted(() => {
+  loadLessons()
+})
 </script>
 
 <style scoped>
-.ehs-dashboard {
+.ll-home {
   position: absolute;
-  height: 100%;
   width: 100%;
-  background: #f0f2f5;
+  height: 100%;
+  background:
+    radial-gradient(circle at top left, rgba(17, 94, 89, 0.16), transparent 28%),
+    linear-gradient(180deg, #f6fbfa 0%, #eef3f8 100%);
 }
 
-/* 欢迎横幅 */
-.welcome-banner {
-  background: linear-gradient(135deg, #1a237e 0%, #0d47a1 40%, #01579b 100%);
-  color: #fff;
-  padding: 28px 32px;
+.hero {
   margin: 0;
-}
-.banner-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  max-width: 1400px;
-  margin: 0 auto;
-}
-.banner-left h1 {
-  margin: 0 0 6px 0;
-  font-size: 26px;
-  font-weight: 700;
-  letter-spacing: 2px;
-}
-.banner-left p {
-  margin: 0 0 8px 0;
-  font-size: 13px;
-  opacity: 0.8;
-  letter-spacing: 1px;
-}
-.banner-date {
-  font-size: 13px;
-  opacity: 0.7;
-}
-.safety-days {
-  text-align: center;
-  background: rgba(255,255,255,0.15);
-  border-radius: 16px;
-  padding: 16px 32px;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255,255,255,0.2);
-}
-.days-number {
-  font-size: 48px;
-  font-weight: 800;
-  line-height: 1;
-  background: linear-gradient(180deg, #4caf50, #81c784);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-.days-label {
-  font-size: 13px;
-  opacity: 0.9;
-  margin-top: 4px;
+  padding: 30px 34px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.8fr);
+  gap: 24px;
+  background: linear-gradient(135deg, #0f4c5c 0%, #125e63 42%, #1f7a8c 100%);
+  color: #fff;
 }
 
-/* KPI 卡片 */
-.kpi-section {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 16px;
-  padding: 20px 24px;
-  max-width: 1440px;
-  margin: 0 auto;
+.eyebrow {
+  font-size: 13px;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  opacity: 0.75;
 }
-.kpi-card {
-  background: #fff;
-  border-radius: 12px;
-  padding: 18px 16px;
+
+.hero h1 {
+  margin: 10px 0 12px;
+  font-size: 34px;
+  line-height: 1.15;
+}
+
+.hero p {
+  max-width: 620px;
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.7;
+  opacity: 0.9;
+}
+
+.hero-actions {
+  margin-top: 22px;
   display: flex;
-  flex-direction: column;
+  gap: 12px;
+}
+
+.hero-side {
+  padding: 24px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(6px);
+}
+
+.hero-stat {
+  margin-bottom: 18px;
+}
+
+.stat-label {
+  font-size: 14px;
+  opacity: 0.75;
+}
+
+.stat-value {
+  margin-top: 8px;
+  font-size: 58px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.hero-meta {
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+  opacity: 0.88;
+}
+
+.cards {
+  padding: 24px 34px 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.metric-card {
+  padding: 22px 24px;
+  border-radius: 22px;
+  background: #fff;
+  border: 1px solid rgba(15, 76, 92, 0.08);
+  box-shadow: 0 14px 32px rgba(25, 44, 71, 0.08);
+}
+
+.metric-card.blue {
+  border-top: 4px solid #3b82f6;
+}
+
+.metric-card.amber {
+  border-top: 4px solid #f59e0b;
+}
+
+.metric-card.green {
+  border-top: 4px solid #22c55e;
+}
+
+.metric-card.slate {
+  border-top: 4px solid #475569;
+}
+
+.metric-name {
+  color: #64748b;
+  font-size: 14px;
+}
+
+.metric-value {
+  margin: 14px 0 8px;
+  font-size: 38px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.metric-desc {
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.content-grid {
+  padding: 24px 34px 34px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.7fr);
+  gap: 18px;
+}
+
+.panel {
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 24px;
+  padding: 22px 24px;
+  box-shadow: 0 18px 40px rgba(25, 44, 71, 0.08);
+}
+
+.panel.accent {
+  background: linear-gradient(180deg, rgba(15, 76, 92, 0.05) 0%, rgba(255, 255, 255, 0.96) 100%);
+}
+
+.panel-header {
+  display: flex;
   align-items: center;
-  text-align: center;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-  border-top: 3px solid transparent;
-  transition: transform 0.3s, box-shadow 0.3s;
-  cursor: default;
+  justify-content: space-between;
+  margin-bottom: 14px;
 }
-.kpi-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+
+.panel-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
 }
-.kpi-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
+
+.lesson-list,
+.guide-list {
+  display: grid;
+  gap: 12px;
+}
+
+.lesson-row,
+.guide-item {
+  border-radius: 16px;
+  padding: 16px 18px;
+  background: #f8fafc;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.lesson-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+}
+
+.lesson-row:hover {
+  border-color: rgba(15, 118, 110, 0.34);
+  background: #f0fdfa;
+}
+
+.lesson-title,
+.guide-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.lesson-sub,
+.guide-desc,
+.empty-state {
+  margin-top: 6px;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.empty-state {
+  padding: 22px 0;
+}
+
+.quick-links {
+  padding: 0 34px 34px;
+}
+
+.section-title {
+  margin-bottom: 14px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.link-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.link-card {
+  padding: 18px 20px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 18px 40px rgba(25, 44, 71, 0.08);
+  cursor: pointer;
+}
+
+.link-card:hover {
+  transform: translateY(-2px);
+  transition: 0.2s ease;
+}
+
+.link-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 10px;
-}
-.kpi-value {
-  font-size: 28px;
-  font-weight: 800;
-  line-height: 1.2;
-}
-.kpi-label {
-  font-size: 12px;
-  color: #909399;
-  margin-top: 4px;
-}
-.kpi-trend {
-  margin-top: 8px;
-  font-size: 11px;
-}
-.trend-up { color: #67c23a; font-weight: 600; }
-.trend-down { color: #f56c6c; font-weight: 600; }
-.trend-label { color: #c0c4cc; margin-left: 4px; }
-
-/* 内容卡片区 */
-.content-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  padding: 0 24px 20px;
-  max-width: 1440px;
-  margin: 0 auto;
-}
-.content-card {
-  background: #fff;
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-}
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #f0f0f0;
-}
-.card-header h3 {
-  margin: 0;
-  font-size: 16px;
-  color: #303133;
-}
-
-/* 新闻列表 */
-.news-item {
-  display: flex;
-  align-items: center;
-  padding: 10px 0;
-  border-bottom: 1px dashed #f0f0f0;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-.news-item:hover {
-  background: #f5f7fa;
-  margin: 0 -8px;
-  padding: 10px 8px;
-  border-radius: 6px;
-}
-.news-item:last-child { border-bottom: none; }
-.news-title {
-  flex: 1;
-  margin-left: 10px;
-  font-size: 13px;
-  color: #303133;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.news-date {
-  font-size: 12px;
-  color: #c0c4cc;
-  margin-left: 12px;
-  white-space: nowrap;
-}
-
-/* 事件列表 */
-.incident-item {
-  padding: 12px;
-  margin-bottom: 10px;
-  border-radius: 8px;
-  background: #fafbfc;
-  border-left: 3px solid #e4e7ed;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.incident-item:hover {
-  background: #f0f5ff;
-  border-left-color: #409eff;
-}
-.inc-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
-}
-.inc-company {
-  font-size: 12px;
-  color: #909399;
-}
-.inc-title {
-  font-size: 13px;
-  color: #303133;
-  font-weight: 500;
-  margin-bottom: 4px;
-}
-.inc-meta {
-  font-size: 11px;
-  color: #c0c4cc;
-  display: flex;
-  gap: 16px;
-}
-
-.empty-hint {
-  text-align: center;
-  color: #c0c4cc;
-  font-size: 13px;
-  padding: 32px 0;
-}
-
-/* 快捷导航 */
-.quick-nav-section {
-  padding: 0 24px 20px;
-  max-width: 1440px;
-  margin: 0 auto;
-}
-.section-title {
-  font-size: 16px;
-  color: #303133;
-  margin: 0 0 16px 0;
-}
-.nav-grid {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 16px;
-}
-.nav-item {
-  border-radius: 14px;
-  padding: 22px 16px;
+  background: linear-gradient(135deg, #0f766e 0%, #1d4ed8 100%);
   color: #fff;
-  cursor: pointer;
-  transition: transform 0.3s, box-shadow 0.3s;
-  text-align: center;
-}
-.nav-item:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 12px 32px rgba(0,0,0,0.2);
-}
-.nav-icon {
-  font-size: 36px;
-  margin-bottom: 8px;
-}
-.nav-name {
-  font-size: 14px;
   font-weight: 700;
-  margin-bottom: 6px;
-}
-.nav-desc {
-  font-size: 11px;
-  opacity: 0.85;
-  line-height: 1.4;
+  letter-spacing: 1px;
 }
 
-/* 底部 */
-.footer-info {
-  text-align: center;
-  padding: 20px 0 30px;
-  color: #c0c4cc;
-  font-size: 12px;
-}
-.footer-info p {
-  margin: 2px 0;
+.link-name {
+  margin-top: 14px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #0f172a;
 }
 
-/* 响应式 */
+.link-desc {
+  margin-top: 6px;
+  font-size: 13px;
+  color: #64748b;
+}
+
 @media (max-width: 1200px) {
-  .kpi-section { grid-template-columns: repeat(3, 1fr); }
-  .content-row { grid-template-columns: 1fr; }
-  .nav-grid { grid-template-columns: repeat(3, 1fr); }
+  .cards,
+  .content-grid,
+  .hero {
+    grid-template-columns: 1fr;
+  }
+
+  .link-grid {
+    grid-template-columns: 1fr 1fr;
+  }
 }
+
 @media (max-width: 768px) {
-  .kpi-section { grid-template-columns: repeat(2, 1fr); }
-  .nav-grid { grid-template-columns: repeat(2, 1fr); }
-  .banner-content { flex-direction: column; text-align: center; gap: 16px; }
+  .hero,
+  .cards,
+  .content-grid {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .cards {
+    grid-template-columns: 1fr;
+  }
+
+  .link-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hero h1 {
+    font-size: 28px;
+  }
+
+  .hero-actions {
+    flex-direction: column;
+  }
 }
 </style>

@@ -40,3 +40,7 @@ tools/gen_entities2.ps1
 # ==================== Gemini / Agent ====================
 .gemini/
 .agents/
+*.txt
+api/VolPro.WebApi/quartz/error/
+dataview/src/packages.zip
+AI_VOL_Pro_Developer_Skill.md
