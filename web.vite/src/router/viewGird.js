@@ -607,6 +607,21 @@ let viewgird = [
         name: 'LL_Analytics',
         component: () => import('@/views/lesson/LL_Analytics.vue'),
         meta: { keepAlive: false }
+    }    ,{
+        path: '/LL_ProblemCenter',
+        name: 'LL_ProblemCenter',
+        component: () => import('@/views/lesson/LL_ProblemCenter.vue'),
+        meta: { keepAlive: false }
+    }    ,{
+        path: '/LL_ExplodedView',
+        name: 'LL_ExplodedView',
+        component: () => import('@/views/lesson/LL_ExplodedView.vue'),
+        meta: { keepAlive: false }
+    }    ,{
+        path: '/LL_PeriodicReview',
+        name: 'LL_PeriodicReview',
+        component: () => import('@/views/lesson/LL_PeriodicReview.vue'),
+        meta: { keepAlive: false }
     }]
 
   //上面的demo、MES开头的都是示例菜单，可以任意删除 

@@ -6,10 +6,68 @@ export const workflowStatusOptions = [
 ]
 
 export const lessonLevelOptions = ['Mandatory', 'Optional', 'Standardized', 'Other']
-export const categoryOptions = ['Design', 'Process', 'Supplier']
+export const categoryOptions = ['Design', 'Process', 'Supplier', 'Nonconformance']
+export const issueSourceOptions = ['deviation', 'eFRQC', '5phase', 'eQMS', 'Other']
+export const productPlatformOptions = ['CEPS', 'REPS', 'SPEPS', 'DPEPS', 'MG', 'RWA', 'CIS', 'HWA', 'BEPS', 'I-Shaft', 'Column', 'MPP', 'Motor']
 export const productLineOptions = ['All EPS', 'REPS', 'SPEPS', 'DPEPS', 'Manual Gear', 'RWA', 'CEPS', 'BEPS', 'I-Shaft', 'Column', 'MPP', 'Motor']
-export const documentTypeOptions = ['设计文件', '工艺文件', '供应商文件']
+
+// 产品线二级层级数据：一级为产品线大类，children 为具体细分型号
+export const productLineTree = [
+  { label: 'CEPS', children: ['M70', 'M80', 'M90', 'HO-CEPS', 'CEPS-Other'] },
+  { label: 'REPS', children: ['REPS-Gen1', 'REPS-Gen2', 'REPS-Other'] },
+  { label: 'SPEPS', children: ['SPEPS-Standard', 'SPEPS-Other'] },
+  { label: 'DPEPS', children: ['DPEPS-Standard', 'DPEPS-Other'] },
+  { label: 'BEPS', children: ['BEPS-Standard', 'BEPS-Other'] },
+  { label: 'Manual Gear', children: ['MG-Standard', 'MG-Other'] },
+  { label: 'RWA', children: ['RWA-Standard', 'RWA-Other'] },
+  { label: 'I-Shaft', children: ['I-Shaft-Standard', 'I-Shaft-Other'] },
+  { label: 'Column', children: ['Column-Standard', 'Column-Other'] },
+  { label: 'MPP', children: ['MPP-Standard', 'MPP-Other'] },
+  { label: 'Motor', children: ['Motor-Standard', 'Motor-Other'] },
+  { label: 'All EPS', children: [] }
+]
+export const partVersionOptions = ['v1', 'v2', 'v3']
+export const documentTypeOptions = [
+  'Product Roadmap',
+  'Architecture Technical Roadmap',
+  'Product Manual',
+  'Architecture BOD Book',
+  'Template Drawing/Spec',
+  'Template DFMEA',
+  'Template PFMEA',
+  'Template DSS',
+  'Template Stack Up',
+  'Core Design Guidelines Book',
+  'Platform BOP',
+  'Customer Program APQP Checklist',
+  'Customer Program DR Checklist',
+  'Customer Program Production Release – ISR',
+  'Customer Program Production Release – PSW',
+  'Customer Program Production Release – PPAP',
+  'Platform Validation Report',
+  'Platform Lesson Learn',
+  'Platform TCM',
+  'Supplier Quality Manual',
+  'Incoming Inspection Standard',
+  'Process Control Plan',
+  'Work Instruction',
+  'Design Verification Plan & Report',
+  'Other'
+]
+
+// 发现阶段选项 (Slide 3⑥)
+export const discoveryStageOptions = ['Test Center', 'Prototype Center', 'Production', 'Field', 'NA']
+
 export const suggestedTags = ['零件', '失效模式', '关键工艺', 'EP', '淬火裂纹', 'rack', 'traceability', 'cold cure', 'DFMEA', 'supplier']
+
+// 结构化标签分组 (Slide 4②, Slide 45)
+export const tagGroupDefinitions = [
+  { key: 'problem', label: '问题', icon: '🔴', examples: ['比利时路面', '左右换向', 'rattle noise', '左右转向不一致', '钢环与齿条碰撞'] },
+  { key: 'part', label: '零件', icon: '🔩', examples: ['rack', 'pinion', 'housing', 'motor', 'worm gear', 'valve', 'torsion bar'] },
+  { key: 'rootCause', label: '根因', icon: '🔍', examples: ['设计不良', '工艺不良', '供应商不良', '热处理不良', '模具磨损', '材料缺陷'] },
+  { key: 'action', label: '措施', icon: '🛠️', examples: ['DFMEA更新', 'PFMEA更新', 'CP更新', 'WI更新', 'traceability', 'cold cure'] },
+  { key: 'project', label: '项目', icon: '📁', examples: ['EP', 'DV', 'PV', 'SOP', 'APQP', 'PPAP'] }
+]
 export const quickSectionAnchors = [
   { key: 'basic', label: '基础信息' },
   { key: 'lines', label: 'LL适用产品线' },
@@ -42,23 +100,33 @@ export const emptyForm = () => ({
   Category: '',
   LessonLevel: 'Standardized',
   ProductPlatform: '',
+  ProductPlatforms: [],
   LlGroup: '',
   IssueSource: '',
   IssueNo: '',
+  IssueUrl: '',
   IssueType: '',
   CPI: '',
+  CpiProgram: '',
   Customer: '',
   Program: '',
   PartNo: '',
+  PartVersion: '',
   Plant: '',
   Workshop: '',
   ProductionLine: '',
   CellName: '',
-  ApprovalOwner: 'PL APQP',
+  ApprovalOwner: 'Nexteer Issue Owner',
+  DiscoveryStage: '',
+  IsActive: true,
   PfmeaEnabled: true,
   PfmeaDescription: '',
   PfmeaBefore: newPfmeaScore(),
   PfmeaAfter: newPfmeaScore(),
+  DfmeaEnabled: false,
+  DfmeaDescription: '',
+  DfmeaBefore: newPfmeaScore(),
+  DfmeaAfter: newPfmeaScore(),
   IsLocked: false,
   Status: 0,
   Progress: 0,
@@ -130,10 +198,20 @@ export const toPascalCaseKeys = (payload) => {
     const specialMap = {
       lessonLearn_Id: 'LessonLearn_Id',
       cpi: 'CPI',
+      cpiProgram: 'CpiProgram',
       pfmeaEnabled: 'PfmeaEnabled',
       pfmeaDescription: 'PfmeaDescription',
       pfmeaBefore: 'PfmeaBefore',
-      pfmeaAfter: 'PfmeaAfter'
+      pfmeaAfter: 'PfmeaAfter',
+      dfmeaEnabled: 'DfmeaEnabled',
+      dfmeaDescription: 'DfmeaDescription',
+      dfmeaBefore: 'DfmeaBefore',
+      dfmeaAfter: 'DfmeaAfter',
+      issueUrl: 'IssueUrl',
+      partVersion: 'PartVersion',
+      productPlatforms: 'ProductPlatforms',
+      isActive: 'IsActive',
+      discoveryStage: 'DiscoveryStage'
     }
     const nextKey = specialMap[key] || `${key.charAt(0).toUpperCase()}${key.slice(1)}`
     acc[nextKey] = toPascalCaseKeys(payload[key])

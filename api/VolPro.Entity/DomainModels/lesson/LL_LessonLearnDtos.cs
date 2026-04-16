@@ -14,6 +14,7 @@ namespace VolPro.Entity.DomainModels
         public string ProductLine { get; set; }
         public string Tag { get; set; }
         public string Plant { get; set; }
+        public bool? IsActive { get; set; }
     }
 
     public class LL_LessonLearnPageResult
@@ -33,9 +34,11 @@ namespace VolPro.Entity.DomainModels
         public int? Status { get; set; }
         public int? Progress { get; set; }
         public string ProductPlatform { get; set; }
+        public string ProductPlatformsText { get; set; }
         public string LlGroup { get; set; }
         public string Plant { get; set; }
         public string Workshop { get; set; }
+        public string PartVersion { get; set; }
         public string ApplicableProductLinesText { get; set; }
         public string TagsText { get; set; }
         public int? ViewCount { get; set; }
@@ -43,6 +46,7 @@ namespace VolPro.Entity.DomainModels
         public int? LikeCount { get; set; }
         public int? VersionNo { get; set; }
         public bool? IsLocked { get; set; }
+        public bool? IsActive { get; set; }
         public string DocumentTypesText { get; set; }
         public DateTime? CreateDate { get; set; }
         public DateTime? ModifyDate { get; set; }
@@ -59,24 +63,33 @@ namespace VolPro.Entity.DomainModels
         public string Category { get; set; }
         public string LessonLevel { get; set; }
         public string ProductPlatform { get; set; }
+        public List<string> ProductPlatforms { get; set; } = new List<string>();
         public string LlGroup { get; set; }
         public string IssueSource { get; set; }
         public string IssueNo { get; set; }
+        public string IssueUrl { get; set; }
         public string IssueType { get; set; }
         public string CPI { get; set; }
+        public string CpiProgram { get; set; }
         public string Customer { get; set; }
         public string Program { get; set; }
         public string PartNo { get; set; }
+        public string PartVersion { get; set; }
         public string Plant { get; set; }
         public string Workshop { get; set; }
         public string ProductionLine { get; set; }
         public string CellName { get; set; }
         public string ApprovalOwner { get; set; }
         public bool? IsLocked { get; set; }
+        public bool? IsActive { get; set; }
         public bool? PfmeaEnabled { get; set; }
         public string PfmeaDescription { get; set; }
         public LL_LessonLearnPfmeaScore PfmeaBefore { get; set; } = new LL_LessonLearnPfmeaScore();
         public LL_LessonLearnPfmeaScore PfmeaAfter { get; set; } = new LL_LessonLearnPfmeaScore();
+        public bool? DfmeaEnabled { get; set; }
+        public string DfmeaDescription { get; set; }
+        public LL_LessonLearnPfmeaScore DfmeaBefore { get; set; } = new LL_LessonLearnPfmeaScore();
+        public LL_LessonLearnPfmeaScore DfmeaAfter { get; set; } = new LL_LessonLearnPfmeaScore();
         public LL_LessonLearnBasicInfo BasicInfo { get; set; } = new LL_LessonLearnBasicInfo();
         public List<string> ApplicableProductLines { get; set; } = new List<string>();
         public List<string> Tags { get; set; } = new List<string>();
@@ -219,6 +232,7 @@ namespace VolPro.Entity.DomainModels
     {
         public int LessonLearn_Id { get; set; }
         public string ProductLine { get; set; }
+        public string ProductPlatform { get; set; }
         public string Category { get; set; }
     }
 

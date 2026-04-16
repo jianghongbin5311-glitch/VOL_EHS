@@ -1,6 +1,6 @@
-# QA_LessonLearn
+# VOL_EHS_LZ
 
-Lesson Learn source code
+VOL Pro version for EHS project
 
 ## Getting started
 
@@ -15,14 +15,14 @@ Already a pro? Just edit this README.md and make it your own. Want to make it ea
 
 ```
 cd existing_repo
-git remote add origin http://10.243.98.118:8088/steven.jiang/qa_lessonlearn.git
+git remote add origin http://10.243.98.118:8088/steven.jiang/vol_ehs_lz.git
 git branch -M main
 git push -uf origin main
 ```
 
 ## Integrate with your tools
 
-- [ ] [Set up project integrations](http://10.243.98.118:8088/steven.jiang/qa_lessonlearn/-/settings/integrations)
+- [ ] [Set up project integrations](http://10.243.98.118:8088/steven.jiang/vol_ehs_lz/-/settings/integrations)
 
 ## Collaborate with your team
 

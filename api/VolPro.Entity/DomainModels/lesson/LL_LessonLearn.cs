@@ -46,10 +46,16 @@ namespace VolPro.Entity.DomainModels
         public string LessonLevel { get; set; }
 
         [Display(Name = "产品所属平台")]
-        [MaxLength(100)]
-        [Column(TypeName = "nvarchar(100)")]
+        [MaxLength(500)]
+        [Column(TypeName = "nvarchar(500)")]
         [Editable(true)]
         public string ProductPlatform { get; set; }
+
+        [Display(Name = "产品所属平台文本")]
+        [MaxLength(500)]
+        [Column(TypeName = "nvarchar(500)")]
+        [Editable(true)]
+        public string ProductPlatformsText { get; set; }
 
         [Display(Name = "LL组别")]
         [MaxLength(100)]
@@ -69,6 +75,12 @@ namespace VolPro.Entity.DomainModels
         [Editable(true)]
         public string IssueNo { get; set; }
 
+        [Display(Name = "问题链接")]
+        [MaxLength(500)]
+        [Column(TypeName = "nvarchar(500)")]
+        [Editable(true)]
+        public string IssueUrl { get; set; }
+
         [Display(Name = "问题类型")]
         [MaxLength(100)]
         [Column(TypeName = "nvarchar(100)")]
@@ -80,6 +92,12 @@ namespace VolPro.Entity.DomainModels
         [Column(TypeName = "nvarchar(100)")]
         [Editable(true)]
         public string CPI { get; set; }
+
+        [Display(Name = "CPI与Program")]
+        [MaxLength(300)]
+        [Column(TypeName = "nvarchar(300)")]
+        [Editable(true)]
+        public string CpiProgram { get; set; }
 
         [Display(Name = "客户")]
         [MaxLength(100)]
@@ -98,6 +116,12 @@ namespace VolPro.Entity.DomainModels
         [Column(TypeName = "nvarchar(100)")]
         [Editable(true)]
         public string PartNo { get; set; }
+
+        [Display(Name = "零件号版本")]
+        [MaxLength(50)]
+        [Column(TypeName = "nvarchar(50)")]
+        [Editable(true)]
+        public string PartVersion { get; set; }
 
         [Display(Name = "工厂")]
         [MaxLength(100)]
@@ -187,6 +211,46 @@ namespace VolPro.Entity.DomainModels
         [Editable(true)]
         public int? PfmeaAfterDetection { get; set; }
 
+        [Display(Name = "DFMEA是否启用")]
+        [Column(TypeName = "bit")]
+        [Editable(true)]
+        public bool? DfmeaEnabled { get; set; }
+
+        [Display(Name = "DFMEA说明")]
+        [Column(TypeName = "nvarchar(max)")]
+        [Editable(true)]
+        public string DfmeaDescription { get; set; }
+
+        [Display(Name = "DFMEA改进前严重度")]
+        [Column(TypeName = "int")]
+        [Editable(true)]
+        public int? DfmeaBeforeSeverity { get; set; }
+
+        [Display(Name = "DFMEA改进前频度")]
+        [Column(TypeName = "int")]
+        [Editable(true)]
+        public int? DfmeaBeforeOccurrence { get; set; }
+
+        [Display(Name = "DFMEA改进前探测度")]
+        [Column(TypeName = "int")]
+        [Editable(true)]
+        public int? DfmeaBeforeDetection { get; set; }
+
+        [Display(Name = "DFMEA改进后严重度")]
+        [Column(TypeName = "int")]
+        [Editable(true)]
+        public int? DfmeaAfterSeverity { get; set; }
+
+        [Display(Name = "DFMEA改进后频度")]
+        [Column(TypeName = "int")]
+        [Editable(true)]
+        public int? DfmeaAfterOccurrence { get; set; }
+
+        [Display(Name = "DFMEA改进后探测度")]
+        [Column(TypeName = "int")]
+        [Editable(true)]
+        public int? DfmeaAfterDetection { get; set; }
+
         [Display(Name = "适用产品线文本")]
         [Column(TypeName = "nvarchar(500)")]
         [Editable(true)]
@@ -241,6 +305,11 @@ namespace VolPro.Entity.DomainModels
         [Column(TypeName = "bit")]
         [Editable(true)]
         public bool? IsLocked { get; set; }
+
+        [Display(Name = "是否启用")]
+        [Column(TypeName = "bit")]
+        [Editable(true)]
+        public bool? IsActive { get; set; }
 
         [Display(Name = "提交时间")]
         [Column(TypeName = "datetime")]

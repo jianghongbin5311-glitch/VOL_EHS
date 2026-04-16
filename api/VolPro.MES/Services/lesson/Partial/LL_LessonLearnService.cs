@@ -84,6 +84,10 @@ namespace VolPro.MES.Services
             {
                 query = query.Where(x => (x.Plant ?? "").Contains(request.Plant));
             }
+            if (request.IsActive.HasValue)
+            {
+                query = query.Where(x => (x.IsActive ?? true) == request.IsActive.Value);
+            }
 
             var total = await query.CountAsync();
             var rows = await query
@@ -101,9 +105,11 @@ namespace VolPro.MES.Services
                     Status = x.Status,
                     Progress = x.Progress,
                     ProductPlatform = x.ProductPlatform,
+                    ProductPlatformsText = x.ProductPlatformsText,
                     LlGroup = x.LlGroup,
                     Plant = x.Plant,
                     Workshop = x.Workshop,
+                    PartVersion = x.PartVersion,
                     ApplicableProductLinesText = x.ApplicableProductLinesText,
                     TagsText = x.TagsText,
                     ViewCount = x.ViewCount,
@@ -111,6 +117,7 @@ namespace VolPro.MES.Services
                     LikeCount = x.LikeCount,
                     VersionNo = x.VersionNo,
                     IsLocked = x.IsLocked,
+                    IsActive = x.IsActive,
                     DocumentTypesText = x.DocumentTypesText,
                     CreateDate = x.CreateDate,
                     ModifyDate = x.ModifyDate,
@@ -181,7 +188,8 @@ namespace VolPro.MES.Services
                     FavoriteCount = 0,
                     LikeCount = 0,
                     VersionNo = 0,
-                    IsLocked = false
+                    IsLocked = false,
+                    IsActive = true
                 };
                 ctx.Set<LL_LessonLearn>().Add(entity);
             }
@@ -193,8 +201,7 @@ namespace VolPro.MES.Services
             entity.ModifyDate = now;
             entity.Modifier = userName;
             entity.ModifyID = userId;
-            entity.VersionNo = (entity.VersionNo ?? 0) + 1;
-            entity.ApprovalOwner = string.IsNullOrWhiteSpace(entity.ApprovalOwner) ? "PL APQP" : entity.ApprovalOwner;
+            entity.ApprovalOwner = string.IsNullOrWhiteSpace(entity.ApprovalOwner) ? "Nexteer Issue Owner" : entity.ApprovalOwner;
 
             await ctx.SaveChangesAsync();
             await ReplaceChildrenAsync(ctx, entity.LessonLearn_Id, request);
@@ -241,8 +248,11 @@ namespace VolPro.MES.Services
             entity.ModifyDate = now;
             entity.Modifier = userName;
             entity.ModifyID = userId;
-            entity.VersionNo = (entity.VersionNo ?? 0) + 1;
-            entity.ApprovalOwner = string.IsNullOrWhiteSpace(entity.ApprovalOwner) ? "PL APQP" : entity.ApprovalOwner;
+            if (status == 3)
+            {
+                entity.VersionNo = (entity.VersionNo ?? 0) + 1;
+            }
+            entity.ApprovalOwner = string.IsNullOrWhiteSpace(entity.ApprovalOwner) ? "Nexteer Issue Owner" : entity.ApprovalOwner;
             if (status == 1)
             {
                 entity.SubmittedDate = now;
@@ -287,7 +297,6 @@ namespace VolPro.MES.Services
             var userName = GetCurrentUserName();
             entity.IsLocked = false;
             entity.Status = 0;
-            entity.VersionNo = (entity.VersionNo ?? 0) + 1;
             entity.ModifyDate = now;
             entity.Modifier = userName;
             await ctx.SaveChangesAsync();
@@ -309,6 +318,40 @@ namespace VolPro.MES.Services
             return detail;
         }
 
+        public async Task<LL_LessonLearnDetailDto> SetActiveAsync(int id, bool isActive)
+        {
+            using var ctx = new ServiceDbContext();
+            ctx.QueryTracking = true;
+            var entity = await ctx.Set<LL_LessonLearn>().FirstOrDefaultAsync(x => x.LessonLearn_Id == id);
+            if (entity == null)
+            {
+                throw new Exception("未找到指定 Lesson Learn 记录");
+            }
+
+            var userName = GetCurrentUserName();
+            var now = DateTime.Now;
+            entity.IsActive = isActive;
+            entity.ModifyDate = now;
+            entity.Modifier = userName;
+            await ctx.SaveChangesAsync();
+
+            var detail = await BuildDetailAsync(ctx, entity);
+            ctx.Set<LL_LessonLearnVersionEntity>().Add(new LL_LessonLearnVersionEntity
+            {
+                LessonLearn_Id = entity.LessonLearn_Id,
+                VersionNo = entity.VersionNo,
+                Action = isActive ? "启用" : "停用",
+                Operator = userName,
+                StatusText = GetStatusText(entity.Status),
+                Comment = isActive ? "记录重新启用" : "记录设置为停用",
+                SnapshotJson = Serialize(detail),
+                ActionTime = now
+            });
+            await ctx.SaveChangesAsync();
+            detail.HistoryRecords = await LoadHistoryAsync(ctx, entity.LessonLearn_Id);
+            return detail;
+        }
+
         public async Task<LL_LessonLearnDetailDto> ToggleMetricAsync(int id, string metric)
         {
             using var ctx = new ServiceDbContext();
@@ -318,17 +361,42 @@ namespace VolPro.MES.Services
             {
                 throw new Exception("未找到指定 Lesson Learn 记录");
             }
-            switch ((metric ?? string.Empty).ToLowerInvariant())
+            var metricType = (metric ?? string.Empty).Trim().ToLowerInvariant();
+            if (metricType != "favorite" && metricType != "like")
             {
-                case "favorite":
-                    entity.FavoriteCount = (entity.FavoriteCount ?? 0) + 1;
-                    break;
-                case "like":
-                    entity.LikeCount = (entity.LikeCount ?? 0) + 1;
-                    break;
-                default:
-                    throw new Exception("不支持的统计类型");
+                throw new Exception("不支持的统计类型");
             }
+
+            var userId = GetCurrentUserId();
+            var userName = GetCurrentUserName();
+            var existed = await ctx.Set<LL_LessonLearnUserMetricEntity>()
+                .FirstOrDefaultAsync(x =>
+                    x.LessonLearn_Id == id &&
+                    x.MetricType == metricType &&
+                    (
+                        (userId > 0 && x.UserId == userId) ||
+                        (!string.IsNullOrWhiteSpace(userName) && x.UserName == userName)
+                    ));
+
+            if (existed == null)
+            {
+                ctx.Set<LL_LessonLearnUserMetricEntity>().Add(new LL_LessonLearnUserMetricEntity
+                {
+                    LessonLearn_Id = id,
+                    MetricType = metricType,
+                    UserId = userId > 0 ? (int?)userId : null,
+                    UserName = userName,
+                    CreateDate = DateTime.Now
+                });
+            }
+            else
+            {
+                ctx.Set<LL_LessonLearnUserMetricEntity>().Remove(existed);
+            }
+
+            await ctx.SaveChangesAsync();
+            entity.FavoriteCount = await ctx.Set<LL_LessonLearnUserMetricEntity>().CountAsync(x => x.LessonLearn_Id == id && x.MetricType == "favorite");
+            entity.LikeCount = await ctx.Set<LL_LessonLearnUserMetricEntity>().CountAsync(x => x.LessonLearn_Id == id && x.MetricType == "like");
             await ctx.SaveChangesAsync();
             return await BuildDetailAsync(ctx, entity);
         }
@@ -420,11 +488,11 @@ namespace VolPro.MES.Services
         public async Task<LL_LessonLearnNumberResult> GenerateLessonNoAsync(LL_LessonLearnNumberRequest request)
         {
             request ??= new LL_LessonLearnNumberRequest();
-            var productLine = NormalizeLessonSegment(request.ProductLine);
+            var productLine = NormalizeLessonSegment(string.IsNullOrWhiteSpace(request.ProductPlatform) ? request.ProductLine : request.ProductPlatform);
             var categoryCode = GetCategoryCode(request.Category);
             if (string.IsNullOrWhiteSpace(productLine))
             {
-                throw new Exception("生成 LL 编号前，请先选择至少一个适用产品线");
+                throw new Exception("生成 LL 编号前，请先选择产品所属平台");
             }
             if (string.IsNullOrWhiteSpace(categoryCode))
             {
@@ -450,10 +518,10 @@ namespace VolPro.MES.Services
 
             return new LL_LessonLearnNumberResult
             {
-                ProductLine = request.ProductLine,
+                ProductLine = productLine,
                 Category = request.Category,
                 Prefix = prefix,
-                LessonNo = $"{prefix}{(maxNo + 1):000}"
+                LessonNo = $"{prefix}{(maxNo + 1):0000}"
             };
         }
 
@@ -769,19 +837,24 @@ namespace VolPro.MES.Services
                 Category = entity.Category,
                 LessonLevel = entity.LessonLevel,
                 ProductPlatform = entity.ProductPlatform,
+                ProductPlatforms = ParseMultiTextValues(entity.ProductPlatformsText, entity.ProductPlatform),
                 LlGroup = entity.LlGroup,
                 IssueSource = entity.IssueSource,
                 IssueNo = entity.IssueNo,
+                IssueUrl = entity.IssueUrl,
                 IssueType = entity.IssueType,
                 CPI = entity.CPI,
+                CpiProgram = entity.CpiProgram,
                 Customer = entity.Customer,
                 Program = entity.Program,
                 PartNo = entity.PartNo,
+                PartVersion = entity.PartVersion,
                 Plant = entity.Plant,
                 Workshop = entity.Workshop,
                 ProductionLine = entity.ProductionLine,
                 CellName = entity.CellName,
                 ApprovalOwner = entity.ApprovalOwner,
+                IsActive = entity.IsActive,
                 PfmeaEnabled = entity.PfmeaEnabled,
                 PfmeaDescription = entity.PfmeaDescription,
                 PfmeaBefore = new LL_LessonLearnPfmeaScore
@@ -795,6 +868,20 @@ namespace VolPro.MES.Services
                     Severity = entity.PfmeaAfterSeverity ?? 0,
                     Occurrence = entity.PfmeaAfterOccurrence ?? 0,
                     Detection = entity.PfmeaAfterDetection ?? 0
+                },
+                DfmeaEnabled = entity.DfmeaEnabled,
+                DfmeaDescription = entity.DfmeaDescription,
+                DfmeaBefore = new LL_LessonLearnPfmeaScore
+                {
+                    Severity = entity.DfmeaBeforeSeverity ?? 0,
+                    Occurrence = entity.DfmeaBeforeOccurrence ?? 0,
+                    Detection = entity.DfmeaBeforeDetection ?? 0
+                },
+                DfmeaAfter = new LL_LessonLearnPfmeaScore
+                {
+                    Severity = entity.DfmeaAfterSeverity ?? 0,
+                    Occurrence = entity.DfmeaAfterOccurrence ?? 0,
+                    Detection = entity.DfmeaAfterDetection ?? 0
                 },
                 Status = entity.Status,
                 Progress = entity.Progress,
@@ -991,26 +1078,36 @@ namespace VolPro.MES.Services
 
         private void ApplyRequest(LL_LessonLearn entity, LL_LessonLearnSaveRequest request)
         {
+            var productPlatforms = NormalizeDistinctTextList(request.ProductPlatforms);
+            var primaryProductPlatform = !string.IsNullOrWhiteSpace(request.ProductPlatform)
+                ? request.ProductPlatform?.Trim()
+                : productPlatforms.FirstOrDefault() ?? string.Empty;
+
             entity.LessonNo = request.LessonNo?.Trim();
             entity.TitleEn = request.TitleEn?.Trim();
             entity.TitleCn = request.TitleCn?.Trim();
             entity.Category = request.Category?.Trim();
             entity.LessonLevel = request.LessonLevel?.Trim();
-            entity.ProductPlatform = request.ProductPlatform?.Trim();
+            entity.ProductPlatform = primaryProductPlatform;
+            entity.ProductPlatformsText = string.Join(", ", productPlatforms);
             entity.LlGroup = request.LlGroup?.Trim();
             entity.IssueSource = request.IssueSource?.Trim();
             entity.IssueNo = request.IssueNo?.Trim();
+            entity.IssueUrl = BuildIssueUrl(request.IssueSource, request.IssueNo, request.IssueUrl);
             entity.IssueType = request.IssueType?.Trim();
             entity.CPI = request.CPI?.Trim();
+            entity.CpiProgram = request.CpiProgram?.Trim();
             entity.Customer = request.Customer?.Trim();
             entity.Program = request.Program?.Trim();
             entity.PartNo = request.PartNo?.Trim();
+            entity.PartVersion = request.PartVersion?.Trim();
             entity.Plant = request.Plant?.Trim();
             entity.Workshop = request.Workshop?.Trim();
             entity.ProductionLine = request.ProductionLine?.Trim();
             entity.CellName = request.CellName?.Trim();
             entity.ApprovalOwner = request.ApprovalOwner?.Trim();
             entity.IsLocked = request.IsLocked ?? false;
+            entity.IsActive = request.IsActive ?? entity.IsActive ?? true;
             entity.PfmeaEnabled = request.PfmeaEnabled ?? false;
             entity.PfmeaDescription = request.PfmeaDescription?.Trim();
             entity.PfmeaBeforeSeverity = request.PfmeaBefore?.Severity;
@@ -1019,6 +1116,14 @@ namespace VolPro.MES.Services
             entity.PfmeaAfterSeverity = request.PfmeaAfter?.Severity;
             entity.PfmeaAfterOccurrence = request.PfmeaAfter?.Occurrence;
             entity.PfmeaAfterDetection = request.PfmeaAfter?.Detection;
+            entity.DfmeaEnabled = request.DfmeaEnabled ?? false;
+            entity.DfmeaDescription = request.DfmeaDescription?.Trim();
+            entity.DfmeaBeforeSeverity = request.DfmeaBefore?.Severity;
+            entity.DfmeaBeforeOccurrence = request.DfmeaBefore?.Occurrence;
+            entity.DfmeaBeforeDetection = request.DfmeaBefore?.Detection;
+            entity.DfmeaAfterSeverity = request.DfmeaAfter?.Severity;
+            entity.DfmeaAfterOccurrence = request.DfmeaAfter?.Occurrence;
+            entity.DfmeaAfterDetection = request.DfmeaAfter?.Detection;
             entity.LlCategoryCode = request.BasicInfo?.LlCategoryCode?.Trim();
             entity.LlGroupNote = request.BasicInfo?.LlGroupNote?.Trim();
             entity.VersionRemark = request.BasicInfo?.VersionRemark?.Trim();
@@ -1114,10 +1219,58 @@ namespace VolPro.MES.Services
             return total;
         }
 
+        private List<string> NormalizeDistinctTextList(List<string> values)
+        {
+            return (values ?? new List<string>())
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Select(x => x.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        private List<string> ParseMultiTextValues(string text, string fallback)
+        {
+            var values = (text ?? string.Empty)
+                .Split(new[] { ',', ';', '，', '；', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(x => x.Trim())
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (!values.Any() && !string.IsNullOrWhiteSpace(fallback))
+            {
+                values.Add(fallback.Trim());
+            }
+            return values;
+        }
+
+        private string BuildIssueUrl(string issueSource, string issueNo, string issueUrl)
+        {
+            if (!string.IsNullOrWhiteSpace(issueUrl))
+            {
+                return issueUrl.Trim();
+            }
+            if (string.IsNullOrWhiteSpace(issueSource) || string.IsNullOrWhiteSpace(issueNo))
+            {
+                return string.Empty;
+            }
+
+            var source = issueSource.Trim().ToLowerInvariant();
+            var issue = Uri.EscapeDataString(issueNo.Trim());
+            return source switch
+            {
+                "deviation" => $"https://deviation.nexteer.com/issues/{issue}",
+                "efrqc" => $"https://efrqc.nexteer.com/issues/{issue}",
+                "5phase" => $"https://5phase.nexteer.com/issues/{issue}",
+                "eqms" => $"https://eqms.nexteer.com/issues/{issue}",
+                _ => string.Empty
+            };
+        }
+
         private bool HasTextBlockContent(LL_LessonLearnTextBlock block)
         {
             return block != null &&
-                (!string.IsNullOrWhiteSpace(block.En) ||
+                   (!string.IsNullOrWhiteSpace(block.En) ||
                  !string.IsNullOrWhiteSpace(block.Zh) ||
                  (block.Images?.Any(IsValidAttachment) ?? false));
         }
@@ -1206,6 +1359,9 @@ namespace VolPro.MES.Services
                 "DESIGN" => "D",
                 "PROCESS" => "P",
                 "SUPPLIER" => "S",
+                "NONCONFORMANCE" => "NC",
+                "NON-CONFORMANCE" => "NC",
+                "NC" => "NC",
                 _ => string.Empty
             };
         }

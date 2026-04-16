@@ -372,4 +372,36 @@ namespace VolPro.Entity.DomainModels
         [Editable(true)]
         public DateTime? ActionTime { get; set; }
     }
+
+    [Entity(TableCnName = "Lesson Learn 用户互动", TableName = "LL_LessonLearnUserMetric", DBServer = "ServiceDbContext")]
+    [Table("LL_LessonLearnUserMetric")]
+    public class LL_LessonLearnUserMetricEntity : ServiceEntity
+    {
+        [Key]
+        [Column(TypeName = "int")]
+        [Editable(true)]
+        public int LessonLearnUserMetric_Id { get; set; }
+
+        [Column(TypeName = "int")]
+        [Editable(true)]
+        public int LessonLearn_Id { get; set; }
+
+        [MaxLength(30)]
+        [Column(TypeName = "nvarchar(30)")]
+        [Editable(true)]
+        public string MetricType { get; set; }
+
+        [Column(TypeName = "int")]
+        [Editable(true)]
+        public int? UserId { get; set; }
+
+        [MaxLength(100)]
+        [Column(TypeName = "nvarchar(100)")]
+        [Editable(true)]
+        public string UserName { get; set; }
+
+        [Column(TypeName = "datetime")]
+        [Editable(true)]
+        public DateTime? CreateDate { get; set; }
+    }
 }

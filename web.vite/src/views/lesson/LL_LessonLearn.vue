@@ -13,6 +13,10 @@
         <el-select v-model="searchForm.status" placeholder="状态" clearable style="width: 140px">
           <el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" />
         </el-select>
+        <el-select v-model="searchForm.isActive" placeholder="生效状态" clearable style="width: 140px">
+          <el-option label="Active" :value="true" />
+          <el-option label="Inactive" :value="false" />
+        </el-select>
         <el-select v-model="searchForm.productLine" placeholder="产品线" clearable filterable style="width: 170px">
           <el-option v-for="item in productLineOptions" :key="item" :label="item" :value="item" />
         </el-select>
@@ -20,24 +24,33 @@
         <el-button @click="resetSearch">重置</el-button>
       </div>
       <div class="toolbar-right">
+        <el-button @click="exportExcel" :loading="exportLoading">导出 Excel</el-button>
         <el-button type="success" @click="openCreate">新建 Lesson Learn</el-button>
       </div>
     </div>
 
     <div class="ll-table">
+      <el-tabs v-model="searchType" class="list-tabs" @tab-change="handleTabChange">
+        <el-tab-pane label="所有数据" name="all" />
+        <el-tab-pane label="我的收藏" name="favorite" />
+        <el-tab-pane label="我的任务" name="task" />
+      </el-tabs>
       <el-table :data="tableData" stripe border v-loading="listLoading" @row-click="openEdit">
         <el-table-column prop="LessonNo" label="LL编号" width="160" />
         <el-table-column label="标题" min-width="260">
           <template #default="{ row }">
-            <div class="title-cell">
-              <div>{{ row.TitleEn || '-' }}</div>
-              <div class="title-cn">{{ row.TitleCn || '' }}</div>
-            </div>
+            <div class="title-cell">{{ row.TitleEn || '-' }}</div>
           </template>
         </el-table-column>
         <el-table-column prop="Category" label="分类" width="110" />
         <el-table-column prop="LessonLevel" label="LL属性" width="130" />
+        <el-table-column prop="ProductPlatformsText" label="产品平台" min-width="160" />
         <el-table-column prop="ApplicableProductLinesText" label="适用产品线" min-width="180" />
+        <el-table-column label="生效状态" width="100">
+          <template #default="{ row }">
+            <el-tag :type="row.IsActive === false ? 'info' : 'success'">{{ row.IsActive === false ? 'Inactive' : 'Active' }}</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
             <el-tag :type="statusTagType(row.Status)">{{ statusText(row.Status) }}</el-tag>
@@ -88,6 +101,9 @@
             <el-button :disabled="!form.LessonLearn_Id" @click="rejectLesson">驳回</el-button>
             <el-button type="success" :disabled="!form.LessonLearn_Id" @click="publishLesson">发布</el-button>
             <el-button :disabled="!form.LessonLearn_Id" @click="unlockLesson">解锁</el-button>
+            <el-button :type="form.IsActive ? 'danger' : 'primary'" :disabled="!form.LessonLearn_Id" @click="setActiveStatus(!form.IsActive)">
+              {{ form.IsActive ? 'Inactive' : 'Active' }}
+            </el-button>
           </div>
         </div>
       </template>
@@ -114,27 +130,44 @@
                 <el-select v-model="form.Category" placeholder="LL分类">
                   <el-option v-for="item in categoryOptions" :key="item" :label="item" :value="item" />
                 </el-select>
+                <el-select v-model="form.LessonLevel" placeholder="LL属性">
+                  <el-option v-for="item in lessonLevelOptions" :key="item" :label="item" :value="item" />
+                </el-select>
+                <el-select v-model="form.ProductPlatforms" multiple filterable allow-create default-first-option placeholder="产品所属平台" collapse-tags collapse-tags-tooltip>
+                  <el-option v-for="item in sharedProductPlatformOptions" :key="item" :label="item" :value="item" />
+                </el-select>
                 <el-input v-model="form.TitleEn" placeholder="英文标题（必填）" />
-                <el-input v-model="form.TitleCn" placeholder="中文标题（选填）" />
-                <el-input v-model="form.ProductPlatform" placeholder="产品所属平台" />
-                <el-input v-model="form.LlGroup" placeholder="LL组别，如 CEPS: CIS/MPP/AM/Software" />
+                <el-input v-model="form.BasicInfo.VersionRemark" placeholder="版本备注 / Export Template Note" />
               </div>
             </el-card>
 
             <el-card>
-              <template #header>业务字段</template>
+              <template #header>问题发生位置与业务字段</template>
               <div class="form-grid">
-                <el-input v-model="form.IssueSource" placeholder="Issue System" />
-                <el-input v-model="form.IssueNo" placeholder="Issue No." />
-                <el-input v-model="form.IssueType" placeholder="Type" />
-                <el-input v-model="form.CPI" placeholder="CPI" />
+                <div style="display:flex;gap:8px">
+                  <el-select v-model="form.IssueSource" filterable allow-create default-first-option placeholder="Issue System" style="width:140px">
+                    <el-option v-for="item in sharedIssueSourceOptions" :key="item" :label="item" :value="item" />
+                  </el-select>
+                  <el-input v-model="form.IssueNo" placeholder="Issue No." style="flex:1" />
+                </div>
+                <el-input v-model="form.IssueUrl" placeholder="Issue Link（自动/手动）" />
+                <el-input v-model="form.IssueType" placeholder="Type / D/P/S/NC" />
+                <el-select v-model="form.CpiProgram" filterable allow-create default-first-option placeholder="CPI# + Program Name" style="width:100%">
+                  <el-option v-for="item in cpiProgramOptions" :key="item" :label="item" :value="item" />
+                </el-select>
                 <el-input v-model="form.Customer" placeholder="Customer" />
-                <el-input v-model="form.Program" placeholder="Program" />
                 <el-input v-model="form.PartNo" placeholder="Part No." />
-                <el-input v-model="form.Plant" placeholder="Plant" />
-                <el-input v-model="form.ProductionLine" placeholder="Line" />
-                <el-input v-model="form.CellName" placeholder="Cell" />
-                <el-input v-model="form.ApprovalOwner" placeholder="审批责任人，如 PL APQP" />
+                <el-select v-model="form.PartVersion" clearable allow-create default-first-option placeholder="Part Version">
+                  <el-option v-for="item in sharedPartVersionOptions" :key="item" :label="item" :value="item" />
+                </el-select>
+                <el-select v-model="form.DiscoveryStage" clearable placeholder="Discovery Stage / 发现阶段">
+                  <el-option v-for="item in sharedDiscoveryStageOptions" :key="item" :label="item" :value="item" />
+                </el-select>
+                <el-select v-model="form.Plant" clearable filterable placeholder="Plant / 工厂"><el-option v-for="item in plantOptions" :key="item" :label="item" :value="item" /></el-select>
+                <el-select v-model="form.Workshop" clearable filterable placeholder="Workshop / 车间"><el-option v-for="item in workshopOptions" :key="item" :label="item" :value="item" /></el-select>
+                <el-select v-model="form.ProductionLine" clearable filterable placeholder="Line / 线体"><el-option v-for="item in lineOptions" :key="item" :label="item" :value="item" /></el-select>
+                <el-input v-model="form.CellName" placeholder="Cell / 工位" />
+                <el-input v-model="form.ApprovalOwner" placeholder="Nexteer Issue Owner" />
               </div>
             </el-card>
           </div>
@@ -144,14 +177,35 @@
             <div class="section-grid">
               <div>
                 <div class="field-title">适用产品线</div>
-                <el-checkbox-group v-model="form.ApplicableProductLines" class="option-grid">
-                  <el-checkbox v-for="item in productLineOptions" :key="item" :label="item">{{ item }}</el-checkbox>
-                </el-checkbox-group>
+                <el-collapse class="pl-collapse">
+                  <el-collapse-item v-for="group in productLineTreeData" :key="group.label" :name="group.label">
+                    <template #title>
+                      <el-checkbox
+                        :model-value="isGroupAllChecked(group)"
+                        :indeterminate="isGroupIndeterminate(group)"
+                        @change="toggleGroup(group, $event)"
+                        @click.stop
+                      >{{ group.label }}</el-checkbox>
+                      <el-tag size="small" type="info" style="margin-left:8px" v-if="getGroupCheckedCount(group) > 0">{{ getGroupCheckedCount(group) }}</el-tag>
+                    </template>
+                    <div class="pl-children" v-if="group.children.length">
+                      <el-checkbox-group v-model="form.ApplicableProductLines">
+                        <el-checkbox v-for="child in group.children" :key="child" :label="child">{{ child }}</el-checkbox>
+                      </el-checkbox-group>
+                    </div>
+                    <div v-else class="pl-no-sub">该产品线无细分子选项，选中即可</div>
+                  </el-collapse-item>
+                </el-collapse>
               </div>
               <div>
                 <div class="field-title">标签</div>
-                <el-select v-model="form.Tags" multiple filterable allow-create default-first-option style="width: 100%">
-                  <el-option v-for="item in suggestedTags" :key="item" :label="item" :value="item" />
+                <el-select v-model="form.Tags" multiple filterable allow-create default-first-option style="width: 100%" placeholder="请输入或选择标签">
+                  <el-option-group v-for="group in tagGroupDefinitions" :key="group.key" :label="`${group.icon} ${group.label}`">
+                    <el-option v-for="item in group.examples" :key="item" :label="item" :value="item" />
+                  </el-option-group>
+                  <el-option-group label="📌 其他" v-if="ungroupedTags.length > 0">
+                    <el-option v-for="item in ungroupedTags" :key="item" :label="item" :value="item" />
+                  </el-option-group>
                 </el-select>
               </div>
             </div>
@@ -250,7 +304,7 @@
             <template #header>标准文件清单与变更前后文件</template>
             <div class="section-grid">
               <el-select v-model="form.DocumentTypes" multiple placeholder="选择文件类型" style="width: 100%">
-                <el-option v-for="item in documentTypeOptions" :key="item" :label="item" :value="item" />
+                <el-option v-for="item in currentDocumentTypeOptions" :key="item" :label="item" :value="item" />
               </el-select>
               <el-button type="primary" @click="addDocumentChange">新增变更条目</el-button>
             </div>
@@ -283,18 +337,33 @@
               <input type="file" multiple @change="uploadGeneralFiles" />
               <el-button @click="downloadAll">下载全部</el-button>
             </div>
-            <div class="attachment-list">
-              <div v-for="(item, index) in form.Attachments" :key="'file-' + index" class="attachment-row">
-                <div>
-                  <div>{{ item.Name }}</div>
-                  <div class="muted">{{ formatSize(item.Size) }} / 下载 {{ item.DownloadCount || 0 }} 次 / {{ item.UploadTime }}</div>
+            <div class="attachment-grid">
+              <div v-for="(item, index) in form.Attachments" :key="'file-' + index" class="attachment-card">
+                <div v-if="isImage(item.Name)" class="thumb" @click="previewImage(item)">
+                  <img :src="buildFileUrl(item.Path)" :alt="item.Name" loading="lazy" />
+                  <div class="thumb-overlay">点击放大</div>
                 </div>
-                <div class="attachment-actions">
-                  <el-button link @click="downloadAttachment(item)">下载</el-button>
-                  <el-button type="danger" link @click="form.Attachments.splice(index, 1)">删除</el-button>
+                <div v-else-if="isPdf(item.Name)" class="thumb pdf-thumb" @click="previewPdf(item)">
+                  <div class="pdf-icon">PDF</div>
+                  <div class="thumb-overlay">在线预览</div>
+                </div>
+                <div class="file-info">
+                  <div class="file-name" :title="item.Name">{{ item.Name }}</div>
+                  <div class="muted">{{ formatSize(item.Size) }} / 下载 {{ item.DownloadCount || 0 }} 次</div>
+                </div>
+                <div class="file-actions">
+                  <el-button link size="small" @click="downloadAttachment(item)">下载</el-button>
+                  <el-button link size="small" v-if="isPdf(item.Name)" @click="previewPdf(item)">预览</el-button>
+                  <el-button link type="danger" size="small" @click="form.Attachments.splice(index, 1)">删除</el-button>
                 </div>
               </div>
             </div>
+            <el-dialog v-model="imagePreviewVisible" title="图片预览" width="80%" append-to-body destroy-on-close>
+              <img :src="imagePreviewUrl" style="width:100%;max-height:80vh;object-fit:contain" />
+            </el-dialog>
+            <el-dialog v-model="pdfPreviewVisible" title="PDF 预览" width="90%" top="3vh" append-to-body destroy-on-close>
+              <iframe :src="pdfPreviewUrl" style="width:100%;height:80vh;border:none" />
+            </el-dialog>
           </el-card>
         </el-tab-pane>
 
@@ -376,16 +445,105 @@
             </el-timeline-item>
           </el-timeline>
         </el-tab-pane>
+
+        <el-tab-pane label="FMEA分析">
+          <div class="section-grid">
+            <el-card>
+              <template #header>PFMEA Analysis</template>
+              <div class="form-grid">
+                <div style="display:flex;gap:8px;align-items:center">
+                  <span>启用 PFMEA</span>
+                  <el-switch v-model="form.PfmeaEnabled" />
+                </div>
+                <el-input v-model="form.PfmeaDescription" type="textarea" :rows="2" placeholder="FMEA文件编号&版本号-Issue编号-Function-Failure" />
+              </div>
+              <div v-if="form.PfmeaEnabled" style="margin-top:12px">
+                <div class="form-grid">
+                  <div><div class="field-title">改善前</div>
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+                      <div><div class="muted">Severity</div><el-input-number v-model="form.PfmeaBefore.Severity" :min="0" :max="10" style="width:100%" /></div>
+                      <div><div class="muted">Occurrence</div><el-input-number v-model="form.PfmeaBefore.Occurrence" :min="0" :max="10" style="width:100%" /></div>
+                      <div><div class="muted">Detection</div><el-input-number v-model="form.PfmeaBefore.Detection" :min="0" :max="10" style="width:100%" /></div>
+                    </div>
+                    <div class="muted" style="margin-top:6px">RPN: {{ calcRpn(form.PfmeaBefore) }}</div>
+                  </div>
+                  <div><div class="field-title">改善后</div>
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+                      <div><div class="muted">Severity</div><el-input-number v-model="form.PfmeaAfter.Severity" :min="0" :max="10" style="width:100%" /></div>
+                      <div><div class="muted">Occurrence</div><el-input-number v-model="form.PfmeaAfter.Occurrence" :min="0" :max="10" style="width:100%" /></div>
+                      <div><div class="muted">Detection</div><el-input-number v-model="form.PfmeaAfter.Detection" :min="0" :max="10" style="width:100%" /></div>
+                    </div>
+                    <div class="muted" style="margin-top:6px">RPN: {{ calcRpn(form.PfmeaAfter) }}</div>
+                  </div>
+                </div>
+              </div>
+            </el-card>
+            <el-card>
+              <template #header>DFMEA Analysis</template>
+              <div class="form-grid">
+                <div style="display:flex;gap:8px;align-items:center">
+                  <span>启用 DFMEA</span>
+                  <el-switch v-model="form.DfmeaEnabled" />
+                </div>
+                <el-input v-model="form.DfmeaDescription" type="textarea" :rows="2" placeholder="FMEA文件编号&版本号-Issue编号-Function-Failure" />
+              </div>
+              <div v-if="form.DfmeaEnabled" style="margin-top:12px">
+                <div class="form-grid">
+                  <div><div class="field-title">改善前</div>
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+                      <div><div class="muted">Severity</div><el-input-number v-model="form.DfmeaBefore.Severity" :min="0" :max="10" style="width:100%" /></div>
+                      <div><div class="muted">Occurrence</div><el-input-number v-model="form.DfmeaBefore.Occurrence" :min="0" :max="10" style="width:100%" /></div>
+                      <div><div class="muted">Detection</div><el-input-number v-model="form.DfmeaBefore.Detection" :min="0" :max="10" style="width:100%" /></div>
+                    </div>
+                    <div class="muted" style="margin-top:6px">RPN: {{ calcRpn(form.DfmeaBefore) }}</div>
+                  </div>
+                  <div><div class="field-title">改善后</div>
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+                      <div><div class="muted">Severity</div><el-input-number v-model="form.DfmeaAfter.Severity" :min="0" :max="10" style="width:100%" /></div>
+                      <div><div class="muted">Occurrence</div><el-input-number v-model="form.DfmeaAfter.Occurrence" :min="0" :max="10" style="width:100%" /></div>
+                      <div><div class="muted">Detection</div><el-input-number v-model="form.DfmeaAfter.Detection" :min="0" :max="10" style="width:100%" /></div>
+                    </div>
+                    <div class="muted" style="margin-top:6px">RPN: {{ calcRpn(form.DfmeaAfter) }}</div>
+                  </div>
+                </div>
+              </div>
+            </el-card>
+          </div>
+        </el-tab-pane>
       </el-tabs>
     </el-drawer>
   </div>
 </template>
 
 <script setup>
-import { nextTick, onMounted, reactive, ref, watch } from 'vue'
+import { nextTick, onMounted, reactive, ref, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '@/api/http.js'
+import {
+  calcRpn,
+  categoryOptions as sharedCategoryOptions,
+  defaultTextBlock as sharedDefaultTextBlock,
+  discoveryStageOptions as sharedDiscoveryStageOptions,
+  documentTypeOptions as defaultDocumentTypeOptions,
+  emptyForm as sharedEmptyForm,
+  formatDateTime as sharedFormatDateTime,
+  formatSize as sharedFormatSize,
+  issueSourceOptions as sharedIssueSourceOptions,
+  lessonLevelOptions as sharedLessonLevelOptions,
+  newDocumentChange as sharedNewDocumentChange,
+  newParticipant as sharedNewParticipant,
+  newReview as sharedNewReview,
+  newTask as sharedNewTask,
+  partVersionOptions as sharedPartVersionOptions,
+  productLineOptions as defaultProductLineOptions,
+  productPlatformOptions as sharedProductPlatformOptions,
+  statusTagType as sharedStatusTagType,
+  statusText as sharedStatusText,
+  suggestedTags as defaultSuggestedTags,
+  tagGroupDefinitions,
+  productLineTree
+} from './lessonLearnShared'
 
 const statusOptions = [
   { label: '编辑中', value: 0 },
@@ -393,14 +551,17 @@ const statusOptions = [
   { label: '已驳回', value: 2 },
   { label: '已发布', value: 3 }
 ]
-const lessonLevelOptions = ['Mandatory', 'Optional', 'Standardized', 'Other']
-const categoryOptions = ['Design', 'Process', 'Supplier']
-const productLineOptions = ref(['All EPS', 'REPS', 'SPEPS', 'DPEPS', 'Manual Gear', 'RWA', 'CEPS', 'BEPS', 'I-Shaft', 'Column', 'MPP', 'Motor'])
-const documentTypeOptions = ['设计文件', '工艺文件', '供应商文件']
-const suggestedTags = ['比利时路面', '左右换向', 'rattle noise', '左右转向不一致', '钢环与齿条碰撞', '热处理不良', '模具磨损']
+const categoryOptions = sharedCategoryOptions
+const lessonLevelOptions = sharedLessonLevelOptions
+const currentProductLineOptions = ref([...defaultProductLineOptions])
+const currentTagSuggestions = ref([...defaultSuggestedTags])
+const currentDocumentTypeOptions = ref([...defaultDocumentTypeOptions])
+const cpiProgramOptions = ref(['3373-PSA-A51-Halfshafts-BR', '5005-Chery-T21-CEPS-SU', '5123-Suzuki-YV7-CIS-IN'])
+const masterBundle = ref({ plants: [], workshops: [], lines: [] })
 
 const listLoading = ref(false)
 const saveLoading = ref(false)
+const exportLoading = ref(false)
 const drawerVisible = ref(false)
 const tableData = ref([])
 const pptInputRef = ref(null)
@@ -409,66 +570,55 @@ const suppressWatch = ref(false)
 let autoSaveTimer = null
 const router = useRouter()
 
-const searchForm = reactive({ keyword: '', tag: '', category: '', lessonLevel: '', status: null, productLine: '' })
+const searchForm = reactive({ keyword: '', tag: '', category: '', lessonLevel: '', status: null, isActive: null, productLine: '' })
+const searchType = ref('all')
 const page = reactive({ current: 1, size: 10, total: 0 })
 
-const defaultTextBlock = () => ({ Sort: 1, En: '', Zh: '', Images: [] })
-const newReview = () => ({ Round: '', ReviewDate: '', Reviewer: '', ReviewerTitle: '', Result: '', Comments: '' })
-const newParticipant = () => ({ Name: '', Title: '' })
-const newTask = () => ({ Title: '', Owner: '', DueDate: '', Progress: 0, Status: '待开始', Notes: '' })
-const newDocumentChange = () => ({ ChangeType: '', BeforeFileName: '', AfterFileName: '', BeforeFiles: [], AfterFiles: [] })
-const emptyForm = () => ({
-  LessonLearn_Id: 0,
-  LessonNo: '',
-  TitleEn: '',
-  TitleCn: '',
-  Category: '',
-  ProductPlatform: '',
-  LlGroup: '',
-  IssueSource: '',
-  IssueNo: '',
-  IssueType: '',
-  CPI: '',
-  Customer: '',
-  Program: '',
-  PartNo: '',
-  Plant: '',
-  ProductionLine: '',
-  CellName: '',
-  ApprovalOwner: 'PL APQP',
-  Status: 0,
-  Progress: 0,
-  AnalysisCycleDays: 0,
-  ViewCount: 0,
-  FavoriteCount: 0,
-  LikeCount: 0,
-  VersionNo: 0,
-  IsLocked: false,
-  CreateDate: '',
-  ModifyDate: '',
-  HistoryRecords: [],
-  BasicInfo: { LlCategoryCode: '', LlGroupNote: '', VersionRemark: '' },
-  ApplicableProductLines: [],
-  Tags: [],
-  IssueDescription: [defaultTextBlock()],
-  RootCause: [defaultTextBlock()],
-  CorrectiveActions: [defaultTextBlock()],
-  GlobalLessons: [defaultTextBlock()],
-  SupplementalNotes: [],
-  DocumentTypes: [],
-  DocumentChanges: [],
-  Attachments: [],
-  ReviewRecords: [],
-  Participants: [],
-  Tasks: []
-})
+const defaultTextBlock = sharedDefaultTextBlock
+const newReview = sharedNewReview
+const newParticipant = sharedNewParticipant
+const newTask = sharedNewTask
+const newDocumentChange = sharedNewDocumentChange
+const emptyForm = sharedEmptyForm
 
 const form = ref(emptyForm())
+
+const toNames = (rows, field = 'DataName') => (rows || []).map(item => item?.[field] || item?.dataName).filter(Boolean)
+const appendCurrent = (values, current) => current && !values.includes(current) ? [...values, current] : values
+const plantOptions = computed(() => appendCurrent(toNames(masterBundle.value.plants || masterBundle.value.Plants), form.value.Plant))
+const workshopOptions = computed(() => {
+  let rows = masterBundle.value.workshops || masterBundle.value.Workshops || []
+  if (form.value.Plant) {
+    rows = rows.filter(item => !item.ParentName || item.ParentName === form.value.Plant || item.parentName === form.value.Plant)
+  }
+  return appendCurrent(toNames(rows), form.value.Workshop)
+})
+const lineOptions = computed(() => {
+  let rows = masterBundle.value.lines || masterBundle.value.Lines || []
+  if (form.value.Workshop) {
+    rows = rows.filter(item => !item.ParentName || item.ParentName === form.value.Workshop || item.parentName === form.value.Workshop)
+  }
+  return appendCurrent(toNames(rows), form.value.ProductionLine)
+})
 
 const keyAliasMap = {
   cpi: 'CPI',
   createId: 'CreateID',
-  modifyId: 'ModifyID'
+  modifyId: 'ModifyID',
+  pfmeaEnabled: 'PfmeaEnabled',
+  pfmeaDescription: 'PfmeaDescription',
+  pfmeaBefore: 'PfmeaBefore',
+  pfmeaAfter: 'PfmeaAfter',
+  dfmeaEnabled: 'DfmeaEnabled',
+  dfmeaDescription: 'DfmeaDescription',
+  dfmeaBefore: 'DfmeaBefore',
+  dfmeaAfter: 'DfmeaAfter',
+  issueUrl: 'IssueUrl',
+  partVersion: 'PartVersion',
+  productPlatforms: 'ProductPlatforms',
+  cpiProgram: 'CpiProgram',
+  isActive: 'IsActive',
+  discoveryStage: 'DiscoveryStage'
 }
 
 const toPascalCaseKeys = (value) => {
@@ -485,31 +635,34 @@ const toPascalCaseKeys = (value) => {
   }, {})
 }
 
-const statusText = (status) => {
-  const item = statusOptions.find((x) => x.value === status)
-  return item ? item.label : '编辑中'
-}
-const statusTagType = (status) => {
-  if (status === 1) return 'warning'
-  if (status === 2) return 'danger'
-  if (status === 3) return 'success'
-  return 'info'
-}
-const formatDateTime = (val) => (val ? `${val}`.replace('T', ' ').substring(0, 19) : '-')
-const formatSize = (size) => {
-  if (!size) return '0B'
-  if (size < 1024) return `${size}B`
-  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)}KB`
-  return `${(size / 1024 / 1024).toFixed(1)}MB`
-}
+const statusText = sharedStatusText
+const statusTagType = sharedStatusTagType
+const formatDateTime = sharedFormatDateTime
+const formatSize = sharedFormatSize
 
 const loadMasterBundle = async () => {
   const res = await http.get('/api/LL_MasterData/Bundle', {}, false)
-  const rows = res?.data?.productLines || res?.data?.ProductLines || []
-  const values = rows.map((item) => item.dataName || item.DataName).filter(Boolean)
-  if (values.length) {
-    productLineOptions.value = values
+  if (res.status) {
+    const data = res.data || {}
+    masterBundle.value = data
+    const plRows = data.productLines || data.ProductLines || []
+    const plValues = plRows.map((item) => item.dataName || item.DataName).filter(Boolean)
+    if (plValues.length) currentProductLineOptions.value = plValues
+    const tagRows = data.tagSuggestions || data.TagSuggestions || []
+    const tagValues = tagRows.map((item) => item.dataName || item.DataName).filter(Boolean)
+    if (tagValues.length) currentTagSuggestions.value = tagValues
+    const docRows = data.documentTypes || data.DocumentTypes || []
+    const docValues = docRows.map((item) => item.dataName || item.DataName).filter(Boolean)
+    if (docValues.length) currentDocumentTypeOptions.value = docValues
+    const cpiRows = data.cpiPrograms || data.CpiPrograms || []
+    const cpiValues = cpiRows.map((item) => item.dataName || item.DataName).filter(Boolean)
+    if (cpiValues.length) cpiProgramOptions.value = cpiValues
   }
+}
+
+const handleTabChange = () => {
+  page.current = 1
+  loadList()
 }
 
 const loadList = async () => {
@@ -523,12 +676,29 @@ const loadList = async () => {
       category: searchForm.category,
       lessonLevel: searchForm.lessonLevel,
       status: searchForm.status,
-      productLine: searchForm.productLine
+      isActive: searchForm.isActive,
+      productLine: searchForm.productLine,
+      listType: searchType.value
     }, false)
     if (res.status) {
       const data = toPascalCaseKeys(res.data || {})
       tableData.value = data.Items || []
       page.total = data.Total || 0
+      
+      // ==== Mock Data 注入开始 (应对空数据库展示需求) ====
+      if (tableData.value.length === 0) {
+        tableData.value = [
+          { LessonLearn_Id: 101, LessonNo: 'LL-CEPS-001', TitleEn: 'Torque Sensor Connector Issue Resolving', Category: 'Issue', LessonLevel: 'P0', ProductPlatformsText: 'Global CEPS', ApplicableProductLinesText: 'Chery, GM', IsActive: true, Status: 3, Progress: 100, ViewCount: 204, FavoriteCount: 15, LikeCount: 45, VersionNo: 'V2', CreateDate: '2026-03-01T10:00:00Z', ModifyDate: '2026-04-10T15:30:00Z' },
+          { LessonLearn_Id: 102, LessonNo: 'LL-REPS-005', TitleEn: 'Ball Nut Machining Tool Life Improvement', Category: 'Improvement', LessonLevel: 'P1', ProductPlatformsText: 'REPS', ApplicableProductLinesText: 'VW, Ford', IsActive: true, Status: 1, Progress: 50, ViewCount: 56, FavoriteCount: 2, LikeCount: 8, VersionNo: 'V1', CreateDate: '2026-04-05T09:12:00Z', ModifyDate: '2026-04-15T11:20:00Z' },
+          { LessonLearn_Id: 103, LessonNo: 'LL-MTR-012', TitleEn: 'Stator Winding Defect RCA', Category: 'Quality Issue', LessonLevel: 'P1', ProductPlatformsText: 'Motor', ApplicableProductLinesText: 'All Lines', IsActive: false, Status: 0, Progress: 10, ViewCount: 12, FavoriteCount: 0, LikeCount: 0, VersionNo: 'V1', CreateDate: '2026-04-12T14:45:00Z', ModifyDate: '2026-04-14T08:00:00Z' },
+          { LessonLearn_Id: 104, LessonNo: 'LL-SYS-008', TitleEn: 'Steering ECU Thermal Resistance Test Note', Category: 'Software/System', LessonLevel: 'P2', ProductPlatformsText: 'ECU', ApplicableProductLinesText: 'Generic', IsActive: true, Status: 3, Progress: 100, ViewCount: 430, FavoriteCount: 32, LikeCount: 110, VersionNo: 'V1', CreateDate: '2025-11-20T10:00:00Z', ModifyDate: '2026-01-05T15:30:00Z' },
+          { LessonLearn_Id: 105, LessonNo: 'LL-REPS-018', TitleEn: 'Belt Drive Belt Tension Validation', Category: 'Best Practice', LessonLevel: 'P0', ProductPlatformsText: 'REPS', ApplicableProductLinesText: 'Stellantis', IsActive: true, Status: 3, Progress: 100, ViewCount: 120, FavoriteCount: 5, LikeCount: 22, VersionNo: 'V3', CreateDate: '2026-02-14T09:30:00Z', ModifyDate: '2026-04-01T10:15:00Z' }
+        ]
+        if (searchType.value === 'favorite') { tableData.value = [tableData.value[0], tableData.value[3]] }
+        if (searchType.value === 'task') { tableData.value = [tableData.value[1], tableData.value[2]] }
+        page.total = tableData.value.length
+      }
+      // ==== Mock Data 注入结束 ====
     }
   } finally {
     listLoading.value = false
@@ -541,6 +711,7 @@ const resetSearch = () => {
   searchForm.category = ''
   searchForm.lessonLevel = ''
   searchForm.status = null
+  searchForm.isActive = null
   searchForm.productLine = ''
   page.current = 1
   loadList()
@@ -551,6 +722,8 @@ const mergeForm = (data) => {
   form.value = Object.assign(emptyForm(), data || {})
   form.value.ApplicableProductLines ||= []
   form.value.Tags ||= []
+  form.value.ProductPlatforms ||= []
+  if (!form.value.ProductPlatforms.length && form.value.ProductPlatform) form.value.ProductPlatforms = [form.value.ProductPlatform]
   form.value.IssueDescription = form.value.IssueDescription?.length ? form.value.IssueDescription : [defaultTextBlock()]
   form.value.RootCause = form.value.RootCause?.length ? form.value.RootCause : [defaultTextBlock()]
   form.value.CorrectiveActions = form.value.CorrectiveActions?.length ? form.value.CorrectiveActions : [defaultTextBlock()]
@@ -690,6 +863,20 @@ const submitLesson = () => postAction(`/api/LL_LessonLearn/Submit/${form.value.L
 const rejectLesson = () => postAction(`/api/LL_LessonLearn/Reject/${form.value.LessonLearn_Id}`, '已驳回')
 const publishLesson = () => postAction(`/api/LL_LessonLearn/Publish/${form.value.LessonLearn_Id}`, '已发布并锁定')
 const unlockLesson = () => postAction(`/api/LL_LessonLearn/Unlock/${form.value.LessonLearn_Id}`, '已解锁')
+const setActiveStatus = async (isActive) => {
+  if (!form.value.LessonLearn_Id) { ElMessage.warning('请先保存记录'); return }
+  const actionText = isActive ? '启用' : '停用'
+  try {
+    await ElMessageBox.confirm(`确认${actionText}当前 LL 记录？`, `${actionText}确认`, { type: 'warning' })
+    const res = await http.post(`/api/LL_LessonLearn/SetActive/${form.value.LessonLearn_Id}`, { isActive }, false)
+    if (!res.status) { ElMessage.error(res.message || `${actionText}失败`); return }
+    mergeForm(toPascalCaseKeys(res.data))
+    ElMessage.success(res.message || `${actionText}成功`)
+    loadList()
+  } catch (error) {
+    if (error !== 'cancel') ElMessage.error(error?.message || `${actionText}失败`)
+  }
+}
 
 const generateLessonNo = async () => {
   const productLine = form.value.ApplicableProductLines?.[0] || ''
@@ -799,6 +986,73 @@ watch(drawerVisible, (visible) => {
     clearTimeout(autoSaveTimer)
   }
 })
+
+const exportExcel = async () => {
+  exportLoading.value = true
+  try {
+    const params = new URLSearchParams()
+    if (searchForm.keyword) params.append('keyword', searchForm.keyword)
+    if (searchForm.tag) params.append('tag', searchForm.tag)
+    if (searchForm.category) params.append('category', searchForm.category)
+    if (searchForm.lessonLevel) params.append('lessonLevel', searchForm.lessonLevel)
+    if (searchForm.status !== null && searchForm.status !== undefined) params.append('status', searchForm.status)
+    if (searchForm.isActive !== null && searchForm.isActive !== undefined) params.append('isActive', searchForm.isActive)
+    if (searchForm.productLine) params.append('productLine', searchForm.productLine)
+    if (searchType.value) params.append('listType', searchType.value)
+    const url = `${http.ipAddress}/api/LL_LessonLearn/ExportExcel?${params.toString()}`
+    window.open(url, '_blank')
+    ElMessage.success('导出请求已发送')
+  } catch (e) {
+    ElMessage.error('导出失败')
+  } finally {
+    exportLoading.value = false
+  }
+}
+
+// Tree logic for product lines
+const productLineTreeData = computed(() => productLineTree)
+const isGroupAllChecked = (group) => {
+  const targets = group.children.length ? group.children : [group.label]
+  return targets.every(c => (form.value.ApplicableProductLines || []).includes(c))
+}
+const isGroupIndeterminate = (group) => {
+  const targets = group.children.length ? group.children : [group.label]
+  const checked = targets.filter(c => (form.value.ApplicableProductLines || []).includes(c))
+  return checked.length > 0 && checked.length < targets.length
+}
+const getGroupCheckedCount = (group) => {
+  const targets = group.children.length ? group.children : [group.label]
+  return targets.filter(c => (form.value.ApplicableProductLines || []).includes(c)).length
+}
+const toggleGroup = (group, checked) => {
+  const targets = group.children.length ? group.children : [group.label]
+  const current = new Set(form.value.ApplicableProductLines || [])
+  targets.forEach(t => { if (checked) current.add(t); else current.delete(t) })
+  form.value.ApplicableProductLines = [...current]
+}
+
+// ungroupedTags logic
+const ungroupedTags = computed(() => {
+  const grouped = new Set(tagGroupDefinitions.flatMap(g => g.examples))
+  const allCurrent = new Set([...currentTagSuggestions.value, ...(form.value.Tags || [])])
+  return Array.from(allCurrent).filter(t => !grouped.has(t))
+})
+
+// Attachments preview logic
+const imagePreviewVisible = ref(false)
+const imagePreviewUrl = ref('')
+const pdfPreviewVisible = ref(false)
+const pdfPreviewUrl = ref('')
+const isImage = (name) => /\.(jpe?g|png|gif|bmp|webp|svg|tif|tiff)$/i.test(name || '')
+const isPdf = (name) => /\.pdf$/i.test(name || '')
+const previewImage = (item) => { 
+  imagePreviewUrl.value = buildFileUrl(item.Path)
+  imagePreviewVisible.value = true 
+}
+const previewPdf = (item) => { 
+  pdfPreviewUrl.value = buildFileUrl(item.Path)
+  pdfPreviewVisible.value = true 
+}
 
 onMounted(async () => {
   await loadMasterBundle()
@@ -968,4 +1222,19 @@ onMounted(async () => {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+.list-tabs{margin-bottom:16px;}
+.attachment-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-top:12px}
+.attachment-card{border:1px solid #e7edf5;border-radius:14px;overflow:hidden;background:#fbfdff;transition:box-shadow .2s}.attachment-card:hover{box-shadow:0 8px 20px rgba(15,23,42,.08)}
+.thumb{position:relative;height:140px;overflow:hidden;cursor:pointer;background:#f1f5f9;display:flex;align-items:center;justify-content:center}.thumb img{width:100%;height:100%;object-fit:cover}.thumb-overlay{position:absolute;inset:0;background:rgba(0,0,0,.4);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;opacity:0;transition:opacity .2s}.thumb:hover .thumb-overlay{opacity:1}
+.pdf-thumb{background:linear-gradient(135deg,#fff1f0,#fef3f2)}.pdf-icon{font-size:32px;font-weight:800;color:#dc2626;letter-spacing:2px}
+.file-info{padding:10px 12px}.file-name{font-weight:600;color:#111827;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.file-actions{display:flex;gap:8px;padding:0 12px 10px}
+
+/* 产品线分组折叠样式 */
+.pl-collapse{border:none;margin-top:8px}
+:deep(.pl-collapse .el-collapse-item__header){background:#f8fafc;border-radius:12px;padding:4px 14px;border:1px solid #e7edf5;margin-bottom:6px;font-size:14px}
+:deep(.pl-collapse .el-collapse-item__wrap){border:none;background:transparent}
+:deep(.pl-collapse .el-collapse-item__content){padding:8px 14px 12px}
+.pl-children{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.pl-no-sub{color:#94a3b8;font-size:13px;padding:4px 0}
 </style>
